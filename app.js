@@ -32,7 +32,7 @@ function fmtUnits(raw, dec, maxFrac) { const v = Number(raw) / Math.pow(10, dec)
 function decodeString(hex) { if (!hex || hex === "0x") return ""; const b = hex.slice(2); const len = Number(u256("0x" + b.slice(64, 128))); let out = ""; for (let i = 0; i < len; i++) out += String.fromCharCode(parseInt(b.slice(128 + i * 2, 130 + i * 2), 16)); return out; }
 function encString(s) { const bytes = new TextEncoder().encode(s); const pad = Math.ceil(bytes.length / 32) * 32 || 32; let data = ""; bytes.forEach(x => data += x.toString(16).padStart(2, "0")); return (32).toString(16).padStart(64, "0") + bytes.length.toString(16).padStart(64, "0") + data.padEnd(pad * 2, "0"); }
 const SEL = { totalSupply: "0x18160ddd", decimals: "0x313ce567", symbol: "0x95d89b41", balanceOf: a => "0x70a08231" + a.toLowerCase().replace("0x", "").padStart(64, "0"), cbtcBackingSats: "0x9f5b61d9", outstandingCusd: "0xa42542c0", getName: a => "0x5fd4b08a" + a.toLowerCase().replace("0x", "").padStart(64, "0"), getAddress: n => "0xbf40fac1" + encString(n) };
-async function xnsName(addr) { try { const r = await ethCall(XNS, SEL.getName(addr)); const n = decodeString(r); return n || null; } catch (e) { return null; } }
+async function xnsName(addr) { try { const r = await ethCall(XNS, SEL.getName(addr)); const n = decodeString(r); return n || null; } catch (e) { return undefined; } } /* undefined = check failed, null = genuinely no name */
 async function xnsResolve(name) { const r = await ethCall(XNS, SEL.getAddress(name.toLowerCase())); const a = "0x" + r.slice(-40); return a === "0x0000000000000000000000000000000000000000" ? null : a; }
 function stat(b, s) { return `<div class="stat"><b>${esc(b)}</b><span>${esc(s)}</span></div>`; }
 function dot(id, ok) { const el = $(id); if (el) el.className = "dot " + (ok ? "ok" : "bad"); }
@@ -156,9 +156,9 @@ async function lookupEvmAddress(addr, viaName) {
   ]);
   let rows = "";
   for (const t of TOKENS) {
-    try { const [b, dec] = await Promise.all([ethCall(t.addr, SEL.balanceOf(addr)), ethCall(t.addr, SEL.decimals)]); const v = u256(b); if (v > 0n) rows += `<tr><td>${esc(t.sym)}</td><td class="mono">${esc(fmtUnits(v, Number(u256(dec))))}</td></tr>`; } catch (e) { /* skip */ }
+    try { const b = await ethCall(t.addr, SEL.balanceOf(addr)); if (t.dec == null) t.dec = Number(u256(await ethCall(t.addr, SEL.decimals))); const v = u256(b); if (v > 0n) rows += `<tr><td>${esc(t.sym)}</td><td class="mono">${esc(fmtUnits(v, t.dec))}</td></tr>`; } catch (e) { /* skip */ }
   }
-  out(`<p><b>EVM address</b> <span class="mono">${esc(addr)}</span>${viaName ? ` <span class="pill">via XNS ${esc(viaName)}</span>` : ""}${name ? ` · XNS name: <b>${esc(name)}</b> ✅` : " · no XNS name registered for this address"}</p>
+  out(`<p><b>EVM address</b> <span class="mono">${esc(addr)}</span>${viaName ? ` <span class="pill">via XNS ${esc(viaName)}</span>` : ""}${name ? ` · XNS name: <b>${esc(name)}</b> ✅` : name === undefined ? " · XNS reverse check was unreachable this time (RPC) — not the same as having no name" : " · no XNS name registered for this address"}</p>
   <div class="grid">
     ${balE != null ? stat((Number(u256(balE)) / 1e18).toFixed(6) + " ETH", "public balance on Ethereum") : ""}
     ${balB != null ? stat((Number(u256(balB)) / 1e18).toFixed(6) + " ETH", "public balance on Base") : ""}

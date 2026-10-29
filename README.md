@@ -4,7 +4,8 @@ Built for [poidh bounty #1519 “Vibecode a Tacit Explorer”](https://poidh.xyz
 
 Tacit issues and moves assets in Taproot envelopes on **Bitcoin**, the same confidential notes live in a pool on **Ethereum** (plus a separate multichain EVM pool on Ethereum, Base, Robinhood Chain and MegaETH), and SP1 proofs carry state between them. TACITLENS puts the whole system on one live page.
 
-**Live URL:** https://tacitlens.vercel.app (fallback mirror: https://hdr2804.github.io/tacitlens/)
+**Live URL:** https://hdr2804.github.io/tacitlens/ (GitHub Pages, built from this repo's `main` branch)
+Vercel: project creation via the connected Vercel MCP was blocked by a missing team-scope grant (`403 … scope "hdr2804s-projects" … grant_team_access`) — the repo is deploy-ready for Vercel (`vercel.json` included); grant the MCP connection access to the team, or run `vercel deploy --prod`, and it will serve at `tacitlens.vercel.app` unchanged.
 **Stack:** one static `index.html` + `app.js`. No backend, no build step, no API keys, no wallet, no sign-in. All data is fetched client-side at page load and refreshed every 2 minutes.
 
 ## Panels and their exact data sources

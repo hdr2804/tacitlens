@@ -11,17 +11,17 @@
 
 ## Claim title (paste into the claim title field)
 
-**TACITLENS — one page, both chains: 3,761 live pool notes, 549 bridge burns, 81 Bitcoin assets, and a privacy panel that shows its own blind spots**
+**TACITLENS — one page, both chains: 3,762 live pool notes, 549 bridge burns, 81 Bitcoin assets, and a privacy panel that shows its own blind spots**
 
 ## Claim description (paste into the claim description field)
 
 TACITLENS is a one-page live explorer for Tacit across both chains — no mock data, everything below is fetched in your browser from public mainnet sources when the page loads, and every panel names its source and shows when it was updated.
 
 What it shows:
-• Bridge / reflection: Bitcoin height folded into the pool (973,703 at build time), header-relay tip, reflection lag at 24 confirmations, 549 bridge burns vs 523 mints (the difference is in-flight traffic), burns awaiting bundle, 3,761 live confidential notes, relay state.
-• Bitcoin side: live envelope feed (etches & burns from Tacit's own indexer, each linked to its tacitscan decode), chain tip + fees, the asset directory (81 assets; canonical TAC: 2,284 holders, 5,888 confidential transfers), and the Bitcoin-native tETH/TAC AMM pool (xcurve-verified, reserves + last swap).
-• Ethereum side: the immutable ConfidentialPool read directly by eth_call — cBTC backing 11,949,754 sats (0.11949754 BTC, reflection-attested locks), cUSD CDP debt outstanding on the CollateralEngine, the open relay board, and live totalSupply for TAC (2,749,603.8), tacBTC, tacUSD and wTAC.
-• EVM pool on Ethereum + Base: keeper head (note-tree size 660 on Ethereum, 127,562 on Base) and the latest Transact/Received events per chain, plus the launch farms (1,107.7776 TAC/day in wTAC, solvency health check).
+• Bridge / reflection: Bitcoin height folded into the pool (973,703 at build time), header-relay tip, reflection lag at 24 confirmations, 549 bridge burns vs 529 mints (the difference is in-flight traffic), burns awaiting bundle, 3,762 live confidential notes, relay state.
+• Bitcoin side: live envelope feed (etches & burns from Tacit's own indexer, each linked to its tacitscan decode), chain tip + fees, the asset directory (81 assets; canonical TAC: 2,285 holders, 5,894 confidential transfers), and the Bitcoin-native tETH/TAC AMM pool (xcurve-verified, reserves + last swap).
+• Ethereum side: the immutable ConfidentialPool read directly by eth_call — cBTC backing 11,949,754 sats (0.11949754 BTC, reflection-attested locks), cUSD CDP debt outstanding on the CollateralEngine, the open relay board, and live totalSupply for TAC (2,747,883.3), tacBTC, tacUSD and wTAC.
+• EVM pool on Ethereum + Base: keeper head (note-tree size 660 on Ethereum, 131,692 on Base) and the latest Transact/Received events per chain, plus the launch farms (1,107.7776 TAC/day in wTAC, solvency health check).
 • Privacy boundary panel: grounded in what the page itself can fetch — envelope existence, counts, timing, fees and public addresses are visible; amounts (Pedersen commitments), note-to-note links and blindings are not, and the panel says so, including the relay-witness caveat from Tacit's own build guide.
 • Footprint lookup: paste a tacit1 ID, a Bitcoin txid, a Bitcoin address, an EVM address or tx hash — or an XNS name. XNS bonus implemented on-chain: the registry's getName/getAddress are read by eth_call (e.g. the famous 0xd8dA…6045 resolves to vitalik@eth), and names are shown wherever an address is looked up.
 

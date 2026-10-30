@@ -68,7 +68,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   <!-- BTC ENVELOPES -->
   <section id="p-env">
     <h2>✉️ Bitcoin — recent envelopes <span class="tag btc">BITCOIN</span></h2>
-    <p class="src">Sources: Tacit indexer <a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">GET /assets?network=mainnet</a> (etches &amp; burns are envelope events) · cross-check on <a href="https://tacitscan.io" target="_blank" rel="noopener">tacitscan.io</a> (its JSON feed sends no CORS header, so this page links out instead of embedding it). Amounts inside transfer/mint envelopes are Pedersen commitments — the feed can show <i>that</i> an envelope exists, never <i>how much</i> moved. <span data-ts></span></p>
+    <p class="src">Sources: Tacit indexer <a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">GET /assets?network=mainnet</a> (etches &amp; burns are envelope events; the indexer API only allows the tacit.finance origin via CORS, so from here it is read through a public CORS relay — the data is still Tacit's own JSON) · cross-check on <a href="https://tacitscan.io" target="_blank" rel="noopener">tacitscan.io</a> (its JSON feed sends no CORS header, so this page links out instead of embedding it). Amounts inside transfer/mint envelopes are Pedersen commitments — the feed can show <i>that</i> an envelope exists, never <i>how much</i> moved. <span data-ts></span></p>
     <div class="grid" id="btc-stats"></div>
     <div class="feed" id="env-feed"><p class="note">Loading envelope events…</p></div>
   </section>
@@ -76,7 +76,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   <!-- BTC ASSETS + AMM -->
   <section id="p-assets">
     <h2>🪙 Bitcoin — assets &amp; the native AMM pool <span class="tag btc">BITCOIN</span></h2>
-    <p class="src">Sources: Tacit indexer <a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">/assets</a> + <a href="https://api.tacit.finance/amm/pools?network=mainnet" target="_blank" rel="noopener">/amm/pools</a> (network=mainnet). Holder/transfer counts are the indexer's chain-derived state. <span data-ts></span></p>
+    <p class="src">Sources: Tacit indexer <a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">/assets</a> + <a href="https://api.tacit.finance/amm/pools?network=mainnet" target="_blank" rel="noopener">/amm/pools</a> (network=mainnet, read via a public CORS relay — see the envelopes panel). Holder/transfer counts are the indexer's chain-derived state. <span data-ts></span></p>
     <div id="amm-box"><p class="note">Loading AMM pool…</p></div>
     <table><thead><tr><th>Asset</th><th>Holders</th><th>Transfers</th><th>Etched at block</th></tr></thead><tbody id="assets-body"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
   </section>

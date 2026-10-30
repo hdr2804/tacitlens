@@ -25,6 +25,10 @@ const ago = ts => { const d = Date.now() / 1000 - ts; if (d < 90) return "just n
 function stamp(panel) { const el = $(panel + " [data-ts]"); if (el) el.textContent = "· updated " + new Date().toLocaleTimeString(); }
 function fail(panel, msg) { const el = $(panel); if (el) { const p = document.createElement("p"); p.className = "err"; p.textContent = "⚠ " + msg; el.appendChild(p); } }
 async function jget(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); } finally { clearTimeout(t); } }
+/* The indexer endpoints (/assets, /amm) set Access-Control-Allow-Origin to the tacit.finance
+   origin only, so from any other origin they are read through a public CORS relay
+   (allorigins /raw). Direct is tried first in case Tacit widens the allowlist. */
+async function jgetIndexer(path) { try { return await jget(API + path, 20000); } catch (e) { return await jget("https://api.allorigins.win/raw?url=" + encodeURIComponent(API + path), 30000); } }
 async function rpc(url, method, params) { const c = new AbortController(); const t = setTimeout(() => c.abort(), 20000); try { const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: c.signal }); const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result; } finally { clearTimeout(t); } }
 const ethCall = (to, data, url) => rpc(url || RPC_ETH, "eth_call", [{ to, data }, "latest"]);
 const u256 = hex => BigInt(hex);
@@ -65,7 +69,7 @@ async function loadBitcoin() {
     dot("#dot-btc", true);
   } catch (e) { dot("#dot-btc", false); fail("#p-env", "mempool.space unreachable (" + e.message + ")."); }
   try {
-    const data = await jget(API + "/assets?network=mainnet");
+    const data = await jgetIndexer("/assets?network=mainnet");
     assetsCache = data.assets || [];
     // Envelope feed: etches (CETCH/T_PETCH) + burns (T_BURN) are envelope events in the indexer.
     const events = [];
@@ -85,7 +89,7 @@ async function loadBitcoin() {
     stamp("#p-env"); stamp("#p-assets");
   } catch (e) { fail("#p-env", "Tacit indexer /assets unreachable (" + e.message + "). Envelope feed cannot be shown."); }
   try {
-    const amm = await jget(API + "/amm/pools?network=mainnet");
+    const amm = await jgetIndexer("/amm/pools?network=mainnet");
     const p = (amm.pools || [])[0];
     if (!p) throw new Error("no pool returned");
     const nameA = ASSET_NAMES[p.asset_a] || short(p.asset_a, 8, 6), nameB = ASSET_NAMES[p.asset_b] || short(p.asset_b, 8, 6);

@@ -26,9 +26,16 @@ function stamp(panel) { const el = $(panel + " [data-ts]"); if (el) el.textConte
 function fail(panel, msg) { const el = $(panel); if (el) { const p = document.createElement("p"); p.className = "err"; p.textContent = "⚠ " + msg; el.appendChild(p); } }
 async function jget(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); } finally { clearTimeout(t); } }
 /* The indexer endpoints (/assets, /amm) set Access-Control-Allow-Origin to the tacit.finance
-   origin only, so from any other origin they are read through a public CORS relay
-   (allorigins /raw). Direct is tried first in case Tacit widens the allowlist. */
-async function jgetIndexer(path) { try { return await jget(API + path, 20000); } catch (e) { return await jget("https://api.allorigins.win/raw?url=" + encodeURIComponent(API + path), 30000); } }
+   origin only, so from any other origin they are read through public CORS relays.
+   Direct is tried first in case Tacit widens the allowlist; then a chain of independent
+   relays (each is a free public service and can be flaky, so several are tried in order). */
+async function jgetIndexer(path) {
+  const target = API + path;
+  try { return await jget(target, 15000); } catch (e) {}
+  try { return await jget("https://api.allorigins.win/raw?url=" + encodeURIComponent(target), 30000); } catch (e) {}
+  try { const w = await jget("https://api.allorigins.win/get?url=" + encodeURIComponent(target), 30000); return JSON.parse(w.contents); } catch (e) {}
+  return await jget("https://api.codetabs.com/v1/proxy?quest=" + target, 30000);
+}
 async function rpc(url, method, params) { const c = new AbortController(); const t = setTimeout(() => c.abort(), 20000); try { const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: c.signal }); const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result; } finally { clearTimeout(t); } }
 const ethCall = (to, data, url) => rpc(url || RPC_ETH, "eth_call", [{ to, data }, "latest"]);
 const u256 = hex => BigInt(hex);

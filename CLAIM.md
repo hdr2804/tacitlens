@@ -4,7 +4,7 @@
 - **Deadline:** Mon 16 Nov 2026 14:59 WIB (Sun 15 Nov 2026 11:59 PM PT)
 - **Live URL:** https://hdr2804.github.io/tacitlens/
 - **Repo (public):** https://github.com/hdr2804/tacitlens
-- **Cover image:** `screenshot.png` (viewport) and `screenshot-full.png` (full page) in this folder / repo root — REAL browser screenshots of the live page with every panel populated, captured 30 Oct 2026 ~07:09 WIB after the CORS-relay fix. Use these for the claim + X post. (`cover.png` is the older composed cover — the screenshots supersede it.)
+- **Cover image:** `screenshot.png` (viewport, 2.880px) and `screenshot-full.png` (full page, 2.850px wide) in this folder / repo root — REAL browser screenshots of the live page at 2× retina with every panel populated, captured 30 Oct 2026 ~18:21 WIB. Use the full-page one for the claim; the viewport one is what the X post used.
 - **Status:** X post LIVE & verified 30 Oct 2026 18:15 WIB (https://x.com/Hdr284/status/2116126952235094526 — text matches the draft, all 4 tags present, screenshot attached, public). Claim NOT yet submitted — Hdr submits it.
 
 ---
@@ -46,7 +46,7 @@ Repo: github.com/hdr2804/tacitlens
 @z0r0zzz @davidpereIsHIM @xns
 ```
 
-Attach: `cover.png` (or a screenshot / short screen recording of the live page — the brief asks for a screenshot or recording on X too).
+Attach: `screenshot.png` (this is what the actual X post used).
 
 Longer alternative (if the account has X Premium):
 
@@ -68,11 +68,9 @@ Code: https://github.com/hdr2804/tacitlens
 
 ## Submission checklist for Hdr
 
-1. Open https://hdr2804.github.io/tacitlens/ — confirm panels load (they fetch live; a red ⚠ on one panel means that source hiccuped, refresh usually fixes it).
-2. Take a screenshot of the live page (optional but recommended — use it on X and/or the claim instead of cover.png).
-3. Post the draft X post above with the image attached.
-4. Go to https://poidh.xyz/base/bounty/1519 → Claim → title + description from this file (paste your X post link into the placeholder) + attach the screenshot → submit (small Base gas for the claim tx).
-5. Deadline: **Mon 16 Nov 2026 14:59 WIB**. No KYC. Nothing else to pay.
+1. ~~Post on X~~ — DONE 30 Oct 18:15 WIB: https://x.com/Hdr284/status/2116126952235094526 (verified: exact text, all tags, screenshot attached, public).
+2. Go to https://poidh.xyz/base/bounty/1519 → Claim → title + description from this file (the X post link is already filled in) + attach `screenshot-full.png` → submit (small Base gas for the claim tx).
+3. Deadline: **Mon 16 Nov 2026 14:59 WIB**. No KYC. Nothing else to pay.
 
 ## Notes / blockers
 

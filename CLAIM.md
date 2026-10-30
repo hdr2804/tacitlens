@@ -5,7 +5,7 @@
 - **Live URL:** https://hdr2804.github.io/tacitlens/
 - **Repo (public):** https://github.com/hdr2804/tacitlens
 - **Cover image:** `screenshot.png` (viewport, 2.880px) and `screenshot-full.png` (full page, 2.850px wide) in this folder / repo root — REAL browser screenshots of the live page at 2× retina with every panel populated, captured 30 Oct 2026 ~18:21 WIB. Use the full-page one for the claim; the viewport one is what the X post used.
-- **Status:** X post LIVE & verified 30 Oct 2026 18:15 WIB (https://x.com/Hdr284/status/2116126952235094526 — text matches the draft, all 4 tags present, screenshot attached, public). Claim NOT yet submitted — Hdr submits it.
+- **Status:** CLAIM SUBMITTED & LIVE-VERIFIED 30 Oct 2026 ~18:34 WIB — **claim ID 9230** by hdr (title + description match this pack exactly, X link included). Field at verification: **1 claim — ours is the only entry so far**. X post live 18:15 WIB (https://x.com/Hdr284/status/2116126952235094526). Winner picked by contributors after the Mon 16 Nov 2026 14:59 WIB deadline.
 
 ---
 

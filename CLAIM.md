@@ -5,7 +5,7 @@
 - **Live URL:** https://hdr2804.github.io/tacitlens/
 - **Repo (public):** https://github.com/hdr2804/tacitlens
 - **Cover image:** `screenshot.png` (viewport) and `screenshot-full.png` (full page) in this folder / repo root — REAL browser screenshots of the live page with every panel populated, captured 30 Oct 2026 ~07:09 WIB after the CORS-relay fix. Use these for the claim + X post. (`cover.png` is the older composed cover — the screenshots supersede it.)
-- **Status:** NOT submitted, NOT posted. Hdr posts on X himself, then submits the claim.
+- **Status:** X post LIVE & verified 30 Oct 2026 18:15 WIB (https://x.com/Hdr284/status/2116126952235094526 — text matches the draft, all 4 tags present, screenshot attached, public). Claim NOT yet submitted — Hdr submits it.
 
 ---
 
@@ -29,7 +29,7 @@ Method: one static HTML page + one JS file, no backend, no API keys, no wallet o
 
 Live: https://hdr2804.github.io/tacitlens/
 Repo: https://github.com/hdr2804/tacitlens
-X post: [PASTE YOUR X POST LINK HERE AFTER POSTING]
+X post: https://x.com/Hdr284/status/2116126952235094526
 
 Numbers in this description are the live values observed on 30 Oct 2026 and will have moved by judging time — the page always shows the current ones.
 

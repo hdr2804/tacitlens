@@ -4,7 +4,7 @@
 - **Deadline:** Mon 16 Nov 2026 14:59 WIB (Sun 15 Nov 2026 11:59 PM PT)
 - **Live URL:** https://hdr2804.github.io/tacitlens/
 - **Repo (public):** https://github.com/hdr2804/tacitlens
-- **Cover image:** `cover.png` in this folder / repo root (composed from live values observed 30 Oct 2026 ~06:40 WIB). For the claim screenshot, a fresh browser screenshot of the live page is even better — the bounty asks for a screenshot of the entry.
+- **Cover image:** `screenshot.png` (viewport) and `screenshot-full.png` (full page) in this folder / repo root — REAL browser screenshots of the live page with every panel populated, captured 30 Oct 2026 ~07:09 WIB after the CORS-relay fix. Use these for the claim + X post. (`cover.png` is the older composed cover — the screenshots supersede it.)
 - **Status:** NOT submitted, NOT posted. Hdr posts on X himself, then submits the claim.
 
 ---

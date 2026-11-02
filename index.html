@@ -61,7 +61,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
 <body>
 <header>
   <h1>TACIT<span class="lens">LENS</span> 🔍</h1>
-  <p class="sub">One page, both chains. Tacit issues and moves assets in <b>Taproot envelopes on Bitcoin</b>, the same confidential notes live in a pool on <b>Ethereum</b> (plus the multichain EVM pool on Ethereum &amp; Base), and <b>SP1 proofs</b> carry state between them. Everything below is fetched live from public mainnet sources when you open this page — no mock data, no wallet, no sign-in, no keys, ever.</p>
+  <p class="sub">One page, both chains. Tacit issues and moves assets in <b>Taproot envelopes on Bitcoin</b>, the same confidential notes live in a pool on <b>Ethereum</b> (plus the multichain EVM pool on Ethereum &amp; Base), and <b>SP1 proofs</b> carry state between them. Everything below is fetched live from public mainnet sources when you open this page, and re-read in full every 30 seconds — no mock data, no wallet, no sign-in, no keys, ever.</p>
   <div class="bar">
     <button id="refresh">↻ Refresh all panels</button>
     <span class="note" id="clock"></span>
@@ -89,7 +89,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   <!-- BTC ENVELOPES -->
   <section id="p-env">
     <h2>✉️ Bitcoin — recent envelopes <span class="tag btc">BITCOIN</span></h2>
-    <p class="src">Sources: Tacit indexer <a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">GET /assets?network=mainnet</a> (etches &amp; burns are envelope events; the indexer API only allows the tacit.finance origin via CORS, so from here it is read through a public CORS relay — the data is still Tacit's own JSON) · cross-check on <a href="https://tacitscan.io" target="_blank" rel="noopener">tacitscan.io</a> (its JSON feed sends no CORS header, so this page links out instead of embedding it). Amounts inside transfer/mint envelopes are Pedersen commitments — the feed can show <i>that</i> an envelope exists, never <i>how much</i> moved. <span data-ts></span></p>
+    <p class="src">Sources: Tacit indexer <a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">GET /assets?network=mainnet</a> (etches &amp; burns are envelope events; the indexer API only allows the tacit.finance origin via CORS, so from here it is read through a public CORS relay — the data is still Tacit's own JSON) · cross-check on <a href="https://tacitscan.io" target="_blank" rel="noopener">tacitscan.io</a> (its JSON feed sends no CORS header, so this page links out instead of embedding it). Amounts inside transfer/mint envelopes are Pedersen commitments — the feed can show <i>that</i> an envelope exists, never <i>how much</i> moved. One cadence note, stated plainly: transfers — the frequent activity, thousands counted in the stats above — are published by Tacit's indexer only as totals, never as individual events, so this feed lists the envelope events that <i>are</i> individually published: etches, mints and burns. Those are rare on Tacit by nature, so a fresh fetch can still show an old event — that is the chain's pace, not stale data; the fetch itself is live every load. <span data-ts></span></p>
     <div class="grid" id="btc-stats"></div>
     <div class="feed" id="env-feed"><p class="note">Loading envelope events…</p></div>
   </section>
@@ -110,6 +110,8 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
     <table><thead><tr><th>Asset</th><th>Live listings</th><th>24h volume</th><th>Holders</th></tr></thead><tbody id="market-body"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
     <h3 style="margin:14px 0 6px;font-size:15px">Latest listings</h3>
     <div class="feed" id="market-feed"><p class="note">Loading listings…</p></div>
+    <h3 style="margin:14px 0 6px;font-size:15px">Latest trades</h3>
+    <div class="feed" id="market-trades"><p class="note">Loading trades…</p></div>
   </section>
 
   <!-- CONFIDENTIAL POOL -->
@@ -169,6 +171,6 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   <p><b>TACITLENS</b> — built for poidh bounty #1519 “Vibecode a Tacit Explorer”. Live sources: api.tacit.finance (relay + indexer + farms + market), tacitscan.io (linked), mempool.space &amp; blockstream.info (Bitcoin, cross-checked against each other), ethereum-rpc.publicnode.com &amp; base-rpc.publicnode.com (public RPC), Tacit EVM-pool keepers on Render, XNS registry on Ethereum. Contract addresses from Tacit's official <a href="https://github.com/src-company/tacit/blob/main/docs/DEPLOYMENTS.md" target="_blank" rel="noopener">DEPLOYMENTS.md</a>. If a panel shows an error, the source was unreachable from your browser at load time — the panel says so instead of inventing a number. Indexer-fed panels carry one labelled fallback: if every live CORS relay is unreachable, they show an auto-refreshed snapshot of the same indexer JSON (kept fresh by a scheduled GitHub Action in this repo, <span class="mono">data/</span> folder) under a visible banner — snapshot data is never passed off as live.</p>
   <p>Source repo: <a id="repo-link" href="https://github.com/hdr2804/tacitlens" target="_blank" rel="noopener">github.com/hdr2804/tacitlens</a> · Read-only: this page never asks for seed phrases or private keys and never moves funds.</p>
 </footer>
-<script src="app.js"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

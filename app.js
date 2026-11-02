@@ -24,13 +24,15 @@ const short = (s, a, b) => s && s.length > (a + b + 1) ? s.slice(0, a) + "…" +
 const ago = ts => { const d = Date.now() / 1000 - ts; const u = (n, w) => n + " " + w + (n === 1 ? "" : "s") + " ago"; if (d < 90) return "just now"; if (d < 3600) return u(Math.round(d / 60), "minute"); if (d < 86400) return u(Math.round(d / 3600), "hour"); return u(Math.round(d / 86400), "day"); };
 function stamp(panel) { const el = $(panel + " [data-ts]"); if (el) el.textContent = "· updated " + new Date().toLocaleTimeString(); }
 function fail(panel, msg) { const el = $(panel); if (el) { const p = document.createElement("p"); p.className = "err"; p.textContent = "⚠ " + msg; el.appendChild(p); } }
-async function jget(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); } finally { clearTimeout(t); } }
+async function jget(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal, cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); } finally { clearTimeout(t); } }
 /* The indexer endpoints (/assets, /amm) set Access-Control-Allow-Origin to the tacit.finance
    origin only, so from any other origin they are read through public CORS relays.
    Direct is tried first in case Tacit widens the allowlist; then a chain of independent
    relays (each is a free public service and can be flaky, so several are tried in order). */
 async function jgetIndexer(path) {
-  const target = API + path;
+  /* Cache-bust every fetch: the public relays cache by URL, so a unique target URL is what
+     makes relayed data actually realtime instead of minutes-old relay cache. */
+  const target = API + path + (path.includes("?") ? "&" : "?") + "_t=" + Date.now();
   const enc = encodeURIComponent(target);
   /* Direct first (instant CORS failure if Tacit still restricts it), then all public relays
      raced in parallel — first good JSON wins. Sequential chaining wasted minutes whenever
@@ -64,7 +66,7 @@ async function jgetIndexer(path) {
   } catch (e) { const d = await jget(snap, 10000); markSnapshot(); return d; }
 }
 const SNAPSHOT_FILES = { "/assets?network=mainnet": "data/assets.json", "/amm/pools?network=mainnet": "data/amm-pools.json", "/market?network=mainnet": "data/market.json" };
-async function jgetText(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.text(); } finally { clearTimeout(t); } }
+async function jgetText(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal, cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.text(); } finally { clearTimeout(t); } }
 function markSnapshot() {
   if (G.snapShown) return; G.snapShown = true;
   const show = ts => { const el = $("#snap-note"); if (!el) return; el.style.display = "block"; el.textContent = "⚠ The live CORS relays are unreachable from your browser right now, so the indexer-fed panels (envelopes, assets, AMM, market, freshness check) are showing an auto-refreshed snapshot of the same Tacit indexer JSON" + (ts ? " — fetched " + ts : "") + ", refreshed every hour. Every other panel on this page is live. The snapshot is labelled, never passed off as live."; };
@@ -83,7 +85,7 @@ function renderPriv() {
   if (G.assets != null) s.push(stat(fmt(G.assets), "assets etched on Bitcoin · " + fmt(G.holders || 0) + " holders whose balances the indexer can total"));
   if (s.length) $("#priv-stats").innerHTML = s.join("");
 }
-async function rpc(url, method, params) { const c = new AbortController(); const t = setTimeout(() => c.abort(), 20000); try { const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: c.signal }); const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result; } finally { clearTimeout(t); } }
+async function rpc(url, method, params) { const c = new AbortController(); const t = setTimeout(() => c.abort(), 20000); try { const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: c.signal, cache: "no-store" }); const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result; } finally { clearTimeout(t); } }
 const ethCall = (to, data, url) => rpc(url || RPC_ETH, "eth_call", [{ to, data }, "latest"]);
 const u256 = hex => BigInt(hex);
 function fmtUnits(raw, dec, maxFrac) { const v = Number(raw) / Math.pow(10, dec); return v.toLocaleString("en-US", { maximumFractionDigits: maxFrac == null ? 4 : maxFrac }); }
@@ -130,11 +132,12 @@ async function loadBitcoin() {
     const events = [];
     for (const a of assetsCache) {
       if (a.etched_at_height) events.push({ kind: "ETCH", ticker: a.ticker, txid: a.etch_txid, height: a.etched_at_height, ts: a.etched_at, id: a.asset_id });
+      for (const m of (a.mints || [])) events.push({ kind: "MINT", ticker: a.ticker, txid: m.mint_txid, height: m.minted_at_height, ts: m.minted_at, attested: m.attestation && m.attestation.supply, dec: a.decimals, id: a.asset_id });
       for (const b of (a.burns || [])) events.push({ kind: "BURN", ticker: a.ticker, txid: b.burn_txid, height: b.burned_at_height, ts: b.burned_at, amount: b.burned_amount, dec: a.decimals, id: a.asset_id });
     }
     events.sort((x, y) => (y.height || 0) - (x.height || 0));
     $("#env-feed").innerHTML = events.slice(0, 12).map(e =>
-      `<div><span class="pill">${esc(e.kind)}</span><b>${esc(e.ticker || "?")}</b>${e.amount != null ? " · burned " + esc(fmtUnits(BigInt(e.amount), e.dec == null ? 8 : e.dec)) : " · supply hidden in a Pedersen commitment"} · block ${fmt(e.height)}${e.ts ? " · " + ago(e.ts) : ""}<br><a class="mono" href="https://tacitscan.io/tx/${esc(e.txid)}" target="_blank" rel="noopener">${esc(short(e.txid, 18, 10))}</a> <span class="note">on tacitscan</span></div>`).join("") ||
+      `<div><span class="pill">${esc(e.kind)}</span><b>${esc(e.ticker || "?")}</b>${e.amount != null ? " · burned " + esc(fmtUnits(BigInt(e.amount), e.dec == null ? 8 : e.dec)) : e.attested ? " · attested supply " + esc(fmtUnits(BigInt(e.attested), e.dec == null ? 8 : e.dec)) : " · supply hidden in a Pedersen commitment"} · block ${fmt(e.height)}${e.ts ? " · " + ago(e.ts) : ""}<br><a class="mono" href="https://tacitscan.io/tx/${esc(e.txid)}" target="_blank" rel="noopener">${esc(short(e.txid, 18, 10))}</a> <span class="note">on tacitscan</span></div>`).join("") ||
       '<p class="note">Indexer returned no envelope events.</p>';
     const tac = assetsCache.find(a => a.asset_id === "f0bbe868af10c6c67652a99709bf32048d1aa7194efe3e9a1ef1bde43f94762b");
     if (tac) $("#btc-stats").innerHTML += stat(fmt(tac.holder_count), "TAC holders on Bitcoin") + stat(fmt(tac.transfer_count), "confidential TAC transfers (amounts hidden)") + stat(fmt(assetsCache.length), "assets etched on Bitcoin mainnet");
@@ -255,6 +258,8 @@ async function loadMarket() {
     $("#market-body").innerHTML = withListings.length ? withListings.map(a => `<tr><td><a href="https://tacitscan.io/assets/${esc(a.asset_id)}" target="_blank" rel="noopener"><b>${esc(a.ticker || "?")}</b></a></td><td>${fmt(a.listing_count || 0)}</td><td>${a.volume_24h_sats ? (a.volume_24h_sats / 1e8).toFixed(6) + " BTC" : "—"}</td><td>${fmt(a.holder_count || 0)}</td></tr>`).join("") : '<tr><td colspan="4" class="note">No asset has a live listing right now.</td></tr>';
     const latest = [...live].sort((x, y) => (y.listed_at || 0) - (x.listed_at || 0)).slice(0, 8);
     $("#market-feed").innerHTML = latest.length ? latest.map(l => { const a = byId[l.asset_id] || {}; const dec = a.decimals == null ? 8 : a.decimals; return `<div><span class="pill">${esc(l.kind || "listing")}</span><b>${esc(a.ticker || short(l.asset_id, 8, 6))}</b> · ${esc(fmtUnits(BigInt(l.amount || "0"), dec))} @ <b>${fmt(l.price_sats || 0)} sats</b> (${((l.price_sats || 0) / 1e8).toFixed(8)} BTC)${l.listed_at ? " · listed " + ago(l.listed_at) : ""}<br><a class="mono" href="https://tacitscan.io/tx/${esc(l.txid)}" target="_blank" rel="noopener">${esc(short(l.txid, 18, 10))}</a> <span class="note">maker ${esc(short(l.maker_address || "", 14, 8))}</span></div>`; }).join("") : '<p class="note">No live listings.</p>';
+    const trades = assets.filter(a => a.last_trade && a.last_trade.ts).sort((x, y) => y.last_trade.ts - x.last_trade.ts).slice(0, 5);
+    $("#market-trades").innerHTML = trades.length ? trades.map(a => { const t = a.last_trade; const dec = a.decimals == null ? 8 : a.decimals; return `<div><span class="pill">trade</span><b>${esc(a.ticker || "?")}</b> · ${esc(fmtUnits(BigInt(t.amount || "0"), dec))} @ <b>${fmt(t.price_sats || 0)} sats</b>${t.fill_count ? " · " + fmt(t.fill_count) + " fill(s)" : ""} · ${ago(t.ts)}<br><a class="mono" href="https://tacitscan.io/tx/${esc(t.txid)}" target="_blank" rel="noopener">${esc(short(t.txid, 18, 10))}</a> <span class="note">on tacitscan</span></div>`; }).join("") : '<p class="note">No asset reports a last trade.</p>';
     stamp("#p-market");
   } catch (e) { fail("#p-market", "Market endpoint unreachable (" + e.message + ")."); }
 }
@@ -332,4 +337,5 @@ $("#refresh").addEventListener("click", loadAll);
 $("#go").addEventListener("click", lookup);
 $("#q").addEventListener("keydown", e => { if (e.key === "Enter") lookup(); });
 loadAll();
-setInterval(loadAll, 120000);
+setInterval(loadAll, 30000); /* realtime posture: full re-read of every source every 30 seconds */
+document.addEventListener("visibilitychange", () => { if (!document.hidden) loadAll(); });

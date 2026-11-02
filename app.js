@@ -21,7 +21,7 @@ const ASSET_NAMES = { "3cba71e1114af183cdeacc6b8457a474d17529fd28704480ca799d0d0
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = n => Number(n).toLocaleString("en-US");
 const short = (s, a, b) => s && s.length > (a + b + 1) ? s.slice(0, a) + "…" + s.slice(-b) : s;
-const ago = ts => { const d = Date.now() / 1000 - ts; if (d < 90) return "just now"; if (d < 3600) return Math.round(d / 60) + "m ago"; if (d < 86400) return Math.round(d / 3600) + "h ago"; return Math.round(d / 86400) + "d ago"; };
+const ago = ts => { const d = Date.now() / 1000 - ts; const u = (n, w) => n + " " + w + (n === 1 ? "" : "s") + " ago"; if (d < 90) return "just now"; if (d < 3600) return u(Math.round(d / 60), "minute"); if (d < 86400) return u(Math.round(d / 3600), "hour"); return u(Math.round(d / 86400), "day"); };
 function stamp(panel) { const el = $(panel + " [data-ts]"); if (el) el.textContent = "· updated " + new Date().toLocaleTimeString(); }
 function fail(panel, msg) { const el = $(panel); if (el) { const p = document.createElement("p"); p.className = "err"; p.textContent = "⚠ " + msg; el.appendChild(p); } }
 async function jget(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); } finally { clearTimeout(t); } }

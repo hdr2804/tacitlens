@@ -76,3 +76,16 @@ Code: https://github.com/hdr2804/tacitlens
 
 - Vercel: the connected Vercel MCP lacks the team-scope grant (403, scope "hdr2804s-projects", action grant_team_access), so the primary host is GitHub Pages (live, HTTP 200, built from `main`). The repo is Vercel-ready (`vercel.json`); if Hdr grants the scope or runs `vercel deploy --prod`, the same site serves from Vercel unchanged.
 - tacitscan's `/api/feed` has no CORS header — documented limitation, handled by building the feed from Tacit's own indexer API and linking out to tacitscan decodes. The indexer `/assets` + `/amm` endpoints are CORS-locked to the tacit.finance origin (found during a real-browser screenshot check on 30 Oct — a Node/jsdom check had missed it because it doesn't enforce CORS); fixed the same day by reading those two feeds through the allorigins `/raw` CORS relay, with the relay disclosed on the page itself.
+
+---
+
+## Addendum — 2 Nov 2026: live site improved after submission (claim 9230 unchanged)
+
+Per Hdr's instruction, **no new claim was submitted** — claim 9230 stands and points at the live URL, and the site behind that URL was improved in place after rival claims 9283 (swiftbotlab, Tacit Seam), 9288 (leoxcrane) and 9290 (obtranzat, Tacit Dualscan) appeared:
+
+- **Cross-checks panel (new):** headline numbers read twice in the visitor's browser — Bitcoin tip from mempool.space and blockstream.info, reflection lag recomputed from raw heights, bridge in-flight derived from counters, indexer freshness vs the live tip.
+- **Bitcoin secondary-market panel (new):** `/market` — live listings, 24h volume, per-asset table, latest signed listings.
+- **Measured privacy stats (new):** the privacy panel opens with figures measured from the page's own data (anonymity set = live notes, hidden-amount transfer count, public-leg burns, assets/holders).
+- **Restyle:** Tacit's own design language — paper `#f4efe6` / cream `#f2ebd4` / ink `#1a1a1a`, Instrument Serif display + IBM Plex Mono, Tacit accent colors, pill buttons/tags.
+- **Resilience:** the indexer fetch now races all relay routes in parallel (direct, allorigins raw/get, codetabs, Jina reader; first good JSON wins) instead of a slow sequential chain, and — after the main public relays were observed down for hours on 2 Nov (Cloudflare 502/522) — falls back to a **labelled** same-origin snapshot of the same JSON in `data/`, refreshed every ~30 min (scheduled job; the GitHub Action version ships as `snapshot-workflow.yml` because the git OAuth token cannot push workflow files). Cross-checks and privacy stats render progressively.
+- Field state at the time: rival 9283's live URL returned a GitHub Pages 404 on two independent checks on 2 Nov (its author's GitHub account was suspended 1 Nov, per his own comment on bounty #1523); 9290 is live but serves dated snapshots for the same CORS-restricted feeds and does not implement the XNS bonus.

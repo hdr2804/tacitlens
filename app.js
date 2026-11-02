@@ -36,23 +36,32 @@ async function jgetIndexer(path) {
      raced in parallel — first good JSON wins. Sequential chaining wasted minutes whenever
      one relay hung; the race caps the worst case at one timeout round. One retry round. */
   const attempts = [
-    () => jget(target, 8000),
-    () => jget("https://api.allorigins.win/raw?url=" + enc, 25000),
-    () => jget("https://api.allorigins.win/get?url=" + enc, 25000).then(w => JSON.parse(w.contents)),
-    () => jget("https://api.codetabs.com/v1/proxy?quest=" + target, 25000),
-    () => jgetText("https://r.jina.ai/" + target, 25000).then(txt => { const i = txt.indexOf("{"); if (i < 0) throw new Error("bad relay payload"); return JSON.parse(txt.slice(i)); }),
+    () => jget(target, 6000),
+    () => jget("https://api.allorigins.win/raw?url=" + enc, 12000),
+    () => jget("https://api.allorigins.win/get?url=" + enc, 12000).then(w => JSON.parse(w.contents)),
+    () => jget("https://api.codetabs.com/v1/proxy?quest=" + target, 12000),
+    () => jgetText("https://r.jina.ai/" + target, 12000).then(txt => { const i = txt.indexOf("{"); if (i < 0) throw new Error("bad relay payload"); return JSON.parse(txt.slice(i)); }),
   ];
   const race = () => new Promise((resolve, reject) => {
     let left = attempts.length, done = false;
     attempts.forEach(fn => { fn().then(v => { if (!done) { done = true; resolve(v); } }, () => { if (--left === 0 && !done) reject(new Error("indexer unreachable via every relay")); }); });
   });
-  try { return await race(); } catch (e) { await new Promise(r => setTimeout(r, 1200)); try { return await race(); } catch (e2) {} }
-  /* Last resort, and labelled as such on the page: a same-origin snapshot of this exact JSON,
-     refreshed every ~30 minutes by a scheduled GitHub Action in the repo (data/ folder).
-     Stale-but-labelled beats blank — and it is never passed off as live. */
+  const liveP = (async () => { try { return await race(); } catch (e) { await new Promise(r => setTimeout(r, 1200)); return await race(); } })();
   const snap = SNAPSHOT_FILES[path];
-  if (snap) { const d = await jget(snap, 15000); markSnapshot(); return d; }
-  throw new Error("indexer unreachable via every relay and no snapshot exists");
+  if (!snap) return await liveP;
+  /* Speed fuse: if no live relay has answered within 8 seconds, serve the labelled
+     same-origin snapshot (refreshed every ~30 min) instead of leaving panels blank.
+     If the live fetch lands afterwards, the page upgrades itself to live data once. */
+  const slowSnap = (async () => { await new Promise(r => setTimeout(r, 8000)); return { __snap: true, d: await jget(snap, 10000) }; })();
+  try {
+    const out = await Promise.any([liveP, slowSnap]);
+    if (out && out.__snap) {
+      markSnapshot();
+      if (!G.upgradeArmed) { G.upgradeArmed = true; liveP.then(() => { const el = $("#snap-note"); if (el) el.style.display = "none"; G.snapShown = false; loadAll(); }).catch(() => {}); }
+      return out.d;
+    }
+    return out;
+  } catch (e) { const d = await jget(snap, 10000); markSnapshot(); return d; }
 }
 const SNAPSHOT_FILES = { "/assets?network=mainnet": "data/assets.json", "/amm/pools?network=mainnet": "data/amm-pools.json", "/market?network=mainnet": "data/market.json" };
 async function jgetText(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.text(); } finally { clearTimeout(t); } }
@@ -203,21 +212,30 @@ async function loadChecks() {
   const row = (name, a, b, ok, note) => `<tr><td><b>${esc(name)}</b><br><span class="note">${esc(note)}</span></td><td class="mono">${esc(a)}</td><td class="mono">${esc(b)}</td><td>${ok == null ? '<span class="warn-txt">unreachable</span>' : ok ? '<b class="ok-txt">✓ agree</b>' : '<b class="warn-txt">Δ differs</b>'}</td></tr>`;
   const rows = [];
   const render = () => { $("#checks-body").innerHTML = rows.join(""); };
-  try {
-    const [tipM, tipB, st] = await Promise.all([
-      jget(MEMPOOL + "/blocks/tip/height"),
-      jget("https://blockstream.info/api/blocks/tip/height"),
-      jget(API + "/reflection/status?network=mainnet"),
-    ]);
-    rows.push(row("Bitcoin tip height", "mempool.space: block " + fmt(tipM), "blockstream.info: block " + fmt(tipB), Math.abs(tipM - tipB) <= 1, "Two independent Bitcoin explorers, read seconds apart."));
-    const lagCalc = st.tipHeight - st.attestedHeight;
-    rows.push(row("Reflection lag", "Tacit API reports " + fmt(st.lagBlocks) + " blocks", "recomputed here: tip " + fmt(st.tipHeight) + " − attested " + fmt(st.attestedHeight) + " = " + fmt(lagCalc), lagCalc === st.lagBlocks, "The lag is derived from the API's own two heights, recomputed in your browser — a wrong reported lag would show up here."));
-    rows.push(row("Bridge traffic in flight (derived)", fmt(st.bridgeBurns) + " burns − " + fmt(st.bridgeMinted) + " mints", "= " + fmt(st.bridgeBurns - st.bridgeMinted) + " burns proven on Bitcoin, not yet minted in the pool", true, "Not a second source — arithmetic on the two counters above, done here so the API's summary is never taken on faith."));
-    render(); stamp("#p-checks");
-    /* The freshness row rides on the relay-fed /market fetch — append it whenever it lands
-       instead of holding the whole panel hostage to the slowest source. */
-    marketData().then(mk => { if (mk && mk.meta) { rows.push(row("Indexer freshness", "indexer last scanned block " + fmt(mk.meta.last_scanned), "live tip (mempool.space): block " + fmt(tipM), mk.meta.last_scanned >= tipM - 1, "If the indexer lagged the chain, every indexer-fed panel on this page would be stale — this is the check that catches it.")); render(); } }).catch(() => {});
-  } catch (e) { $("#checks-body").innerHTML = row("Cross-checks", "—", "—", null, "One of the sources was unreachable from your browser (" + e.message + "). The check is shown as failed rather than quietly dropped."); }
+  /* Each check is independent: one slow or blocked source can no longer blank the whole panel —
+     it only marks its own row unreachable. */
+  let tipM = null;
+  const tipJob = (async () => {
+    const [m, b] = await Promise.allSettled([jget(MEMPOOL + "/blocks/tip/height"), jget("https://blockstream.info/api/blocks/tip/height")]);
+    if (m.status === "fulfilled") tipM = m.value;
+    if (m.status === "fulfilled" && b.status === "fulfilled") rows.push(row("Bitcoin tip height", "mempool.space: block " + fmt(m.value), "blockstream.info: block " + fmt(b.value), Math.abs(m.value - b.value) <= 1, "Two independent Bitcoin explorers, read seconds apart."));
+    else if (m.status === "fulfilled" || b.status === "fulfilled") { const ok = m.status === "fulfilled" ? m : b; rows.push(row("Bitcoin tip height", "block " + fmt(ok.value) + " (" + (m.status === "fulfilled" ? "mempool.space" : "blockstream.info") + ")", "second explorer unreachable this load", null, "Only one of the two explorers answered — shown as a single read, not dressed up as a cross-check.")); }
+    else rows.push(row("Bitcoin tip height", "—", "—", null, "Both Bitcoin explorers were unreachable from your browser this load."));
+    render();
+  })();
+  const reflJob = (async () => {
+    try {
+      const st = await jget(API + "/reflection/status?network=mainnet");
+      const lagCalc = st.tipHeight - st.attestedHeight;
+      rows.push(row("Reflection lag", "Tacit API reports " + fmt(st.lagBlocks) + " blocks", "recomputed here: tip " + fmt(st.tipHeight) + " − attested " + fmt(st.attestedHeight) + " = " + fmt(lagCalc), lagCalc === st.lagBlocks, "The lag is derived from the API's own two heights, recomputed in your browser — a wrong reported lag would show up here."));
+      rows.push(row("Bridge traffic in flight (derived)", fmt(st.bridgeBurns) + " burns − " + fmt(st.bridgeMinted) + " mints", "= " + fmt(st.bridgeBurns - st.bridgeMinted) + " burns proven on Bitcoin, not yet minted in the pool", true, "Not a second source — arithmetic on the two counters above, done here so the API's summary is never taken on faith."));
+    } catch (e) { rows.push(row("Reflection lag", "—", "—", null, "Tacit's reflection status was unreachable from your browser this load (" + e.message + ").")); }
+    render();
+  })();
+  await Promise.allSettled([tipJob, reflJob]); stamp("#p-checks");
+  /* The freshness row rides on the relay-fed /market fetch — append it whenever it lands
+     instead of holding the whole panel hostage to the slowest source. */
+  marketData().then(mk => { if (mk && mk.meta) { rows.push(row("Indexer freshness", "indexer last scanned block " + fmt(mk.meta.last_scanned), tipM != null ? "live tip (mempool.space): block " + fmt(tipM) : "live tip unavailable this load", tipM != null ? mk.meta.last_scanned >= tipM - 1 : null, "If the indexer lagged the chain, every indexer-fed panel on this page would be stale — this is the check that catches it.")); render(); } }).catch(() => {});
 }
 
 /* ---------- Bitcoin secondary market ---------- */

@@ -50,7 +50,7 @@ async function jgetIndexer(path) {
   const snap = SNAPSHOT_FILES[path];
   if (!snap) return await liveP;
   /* Speed fuse: if no live relay has answered within 8 seconds, serve the labelled
-     same-origin snapshot (refreshed every ~30 min) instead of leaving panels blank.
+     same-origin snapshot (refreshed every hour) instead of leaving panels blank.
      If the live fetch lands afterwards, the page upgrades itself to live data once. */
   const slowSnap = (async () => { await new Promise(r => setTimeout(r, 8000)); return { __snap: true, d: await jget(snap, 10000) }; })();
   try {
@@ -67,7 +67,7 @@ const SNAPSHOT_FILES = { "/assets?network=mainnet": "data/assets.json", "/amm/po
 async function jgetText(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.text(); } finally { clearTimeout(t); } }
 function markSnapshot() {
   if (G.snapShown) return; G.snapShown = true;
-  const show = ts => { const el = $("#snap-note"); if (!el) return; el.style.display = "block"; el.textContent = "⚠ The live CORS relays are unreachable from your browser right now, so the indexer-fed panels (envelopes, assets, AMM, market, freshness check) are showing an auto-refreshed snapshot of the same Tacit indexer JSON" + (ts ? " — fetched " + ts : "") + ", refreshed every ~30 min. Every other panel on this page is live. The snapshot is labelled, never passed off as live."; };
+  const show = ts => { const el = $("#snap-note"); if (!el) return; el.style.display = "block"; el.textContent = "⚠ The live CORS relays are unreachable from your browser right now, so the indexer-fed panels (envelopes, assets, AMM, market, freshness check) are showing an auto-refreshed snapshot of the same Tacit indexer JSON" + (ts ? " — fetched " + ts : "") + ", refreshed every hour. Every other panel on this page is live. The snapshot is labelled, never passed off as live."; };
   jget("data/meta.json", 8000).then(m => show(m && m.fetched_at)).catch(() => show(null));
 }
 /* Shared values for the measured-privacy row + one shared /market fetch (cross-checks + market panel). */

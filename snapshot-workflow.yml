@@ -1,12 +1,12 @@
 name: Refresh indexer snapshots
 
 # Keeps data/*.json fresh so the site's labelled snapshot fallback is never
-# more than ~30 minutes stale. The page always tries the live relays first;
+# more than ~1 hour stale. The page always tries the live relays first;
 # these files are only served when every relay is unreachable.
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 permissions:

@@ -89,3 +89,11 @@ Per Hdr's instruction, **no new claim was submitted** — claim 9230 stands and 
 - **Restyle:** Tacit's own design language — paper `#f4efe6` / cream `#f2ebd4` / ink `#1a1a1a`, Instrument Serif display + IBM Plex Mono, Tacit accent colors, pill buttons/tags.
 - **Resilience:** the indexer fetch now races all relay routes in parallel (direct, allorigins raw/get, codetabs, Jina reader; first good JSON wins) instead of a slow sequential chain, and — after the main public relays were observed down for hours on 2 Nov (Cloudflare 502/522) — falls back to a **labelled** same-origin snapshot of the same JSON in `data/`, refreshed every hour (scheduled job; the GitHub Action version ships as `snapshot-workflow.yml` because the git OAuth token cannot push workflow files). Cross-checks and privacy stats render progressively.
 - Field state at the time: rival 9283's live URL returned a GitHub Pages 404 on two independent checks on 2 Nov (its author's GitHub account was suspended 1 Nov, per his own comment on bounty #1523); 9290 is live but serves dated snapshots for the same CORS-restricted feeds and does not implement the XNS bonus.
+
+## Bounty comment (approved by Hdr 2 Nov 2026 — he posts it himself on the #1519 page)
+
+Decision record: Hdr asked whether to submit a fresh claim because claim 9230 carries the pre-improvement screenshot. Recommendation given and accepted: keep claim 9230 (poidh claims cannot be edited/withdrawn; a duplicate entry risks split votes / spam reading), strengthen it with one bounty comment instead:
+
+```
+Update on TACITLENS (claim 9230): the live site has been substantially improved since submission — a new cross-checks panel (headline numbers read twice from independent sources), a Bitcoin secondary-market panel, measured privacy stats, and a full restyle in Tacit's own design language. Same live URL: https://hdr2804.github.io/tacitlens/ — the claim screenshot predates the update; the live link shows the current version.
+```

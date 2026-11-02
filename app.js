@@ -31,25 +31,34 @@ async function jget(url, ms) { const c = new AbortController(); const t = setTim
    relays (each is a free public service and can be flaky, so several are tried in order). */
 async function jgetIndexer(path) {
   const target = API + path;
-  const chain = async () => {
-    try { return await jget(target, 15000); } catch (e) {}
-    try { return await jget("https://api.allorigins.win/raw?url=" + encodeURIComponent(target), 30000); } catch (e) {}
-    try { const w = await jget("https://api.allorigins.win/get?url=" + encodeURIComponent(target), 30000); return JSON.parse(w.contents); } catch (e) {}
-    return await jget("https://api.codetabs.com/v1/proxy?quest=" + target, 30000);
-  };
-  try { return await chain(); } catch (e) { /* relays are flaky — one full second pass before giving up */ await new Promise(r => setTimeout(r, 1500)); return await chain(); }
+  const enc = encodeURIComponent(target);
+  /* Direct first (instant CORS failure if Tacit still restricts it), then all public relays
+     raced in parallel — first good JSON wins. Sequential chaining wasted minutes whenever
+     one relay hung; the race caps the worst case at one timeout round. One retry round. */
+  const attempts = [
+    () => jget(target, 8000),
+    () => jget("https://api.allorigins.win/raw?url=" + enc, 25000),
+    () => jget("https://api.allorigins.win/get?url=" + enc, 25000).then(w => JSON.parse(w.contents)),
+    () => jget("https://api.codetabs.com/v1/proxy?quest=" + target, 25000),
+  ];
+  const race = () => new Promise((resolve, reject) => {
+    let left = attempts.length, done = false;
+    attempts.forEach(fn => { fn().then(v => { if (!done) { done = true; resolve(v); } }, () => { if (--left === 0 && !done) reject(new Error("indexer unreachable via every relay")); }); });
+  });
+  try { return await race(); } catch (e) { await new Promise(r => setTimeout(r, 1200)); return await race(); }
 }
 /* Shared values for the measured-privacy row + one shared /market fetch (cross-checks + market panel). */
 const G = {};
 let marketDataP = null;
 function marketData() { if (!marketDataP) { marketDataP = jgetIndexer("/market?network=mainnet"); marketDataP.catch(() => { marketDataP = null; }); } return marketDataP; }
 function renderPriv() {
-  if (G.liveNotes == null || G.transfers == null) return;
-  $("#priv-stats").innerHTML =
-    stat(fmt(G.liveNotes), "live notes in the pool right now — the anonymity set every spend hides inside") +
-    stat(fmt(G.transfers), "confidential transfers counted by the indexer — every one's amount hidden") +
-    stat(fmt(G.burns || 0), "bridge burns on Bitcoin — the public leg: amounts visible, notes on the other side not") +
-    stat(fmt(G.assets || 0), "assets etched on Bitcoin · " + fmt(G.holders || 0) + " holders whose balances the indexer can total");
+  /* Render whatever has arrived — the row must never sit blank waiting on the slowest source. */
+  const s = [];
+  if (G.liveNotes != null) s.push(stat(fmt(G.liveNotes), "live notes in the pool right now — the anonymity set every spend hides inside"));
+  if (G.transfers != null) s.push(stat(fmt(G.transfers), "confidential transfers counted by the indexer — every one's amount hidden"));
+  if (G.burns != null) s.push(stat(fmt(G.burns), "bridge burns on Bitcoin — the public leg: amounts visible, notes on the other side not"));
+  if (G.assets != null) s.push(stat(fmt(G.assets), "assets etched on Bitcoin · " + fmt(G.holders || 0) + " holders whose balances the indexer can total"));
+  if (s.length) $("#priv-stats").innerHTML = s.join("");
 }
 async function rpc(url, method, params) { const c = new AbortController(); const t = setTimeout(() => c.abort(), 20000); try { const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: c.signal }); const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result; } finally { clearTimeout(t); } }
 const ethCall = (to, data, url) => rpc(url || RPC_ETH, "eth_call", [{ to, data }, "latest"]);
@@ -179,20 +188,21 @@ async function loadEvm() {
 async function loadChecks() {
   const row = (name, a, b, ok, note) => `<tr><td><b>${esc(name)}</b><br><span class="note">${esc(note)}</span></td><td class="mono">${esc(a)}</td><td class="mono">${esc(b)}</td><td>${ok == null ? '<span class="warn-txt">unreachable</span>' : ok ? '<b class="ok-txt">✓ agree</b>' : '<b class="warn-txt">Δ differs</b>'}</td></tr>`;
   const rows = [];
+  const render = () => { $("#checks-body").innerHTML = rows.join(""); };
   try {
-    const [tipM, tipB, st, mk] = await Promise.all([
+    const [tipM, tipB, st] = await Promise.all([
       jget(MEMPOOL + "/blocks/tip/height"),
       jget("https://blockstream.info/api/blocks/tip/height"),
       jget(API + "/reflection/status?network=mainnet"),
-      marketData().catch(() => null),
     ]);
     rows.push(row("Bitcoin tip height", "mempool.space: block " + fmt(tipM), "blockstream.info: block " + fmt(tipB), Math.abs(tipM - tipB) <= 1, "Two independent Bitcoin explorers, read seconds apart."));
     const lagCalc = st.tipHeight - st.attestedHeight;
     rows.push(row("Reflection lag", "Tacit API reports " + fmt(st.lagBlocks) + " blocks", "recomputed here: tip " + fmt(st.tipHeight) + " − attested " + fmt(st.attestedHeight) + " = " + fmt(lagCalc), lagCalc === st.lagBlocks, "The lag is derived from the API's own two heights, recomputed in your browser — a wrong reported lag would show up here."));
-    if (mk && mk.meta) rows.push(row("Indexer freshness", "indexer last scanned block " + fmt(mk.meta.last_scanned), "live tip (mempool.space): block " + fmt(tipM), mk.meta.last_scanned >= tipM - 1, "If the indexer lagged the chain, every indexer-fed panel on this page would be stale — this is the check that catches it."));
     rows.push(row("Bridge traffic in flight (derived)", fmt(st.bridgeBurns) + " burns − " + fmt(st.bridgeMinted) + " mints", "= " + fmt(st.bridgeBurns - st.bridgeMinted) + " burns proven on Bitcoin, not yet minted in the pool", true, "Not a second source — arithmetic on the two counters above, done here so the API's summary is never taken on faith."));
-    $("#checks-body").innerHTML = rows.join("");
-    stamp("#p-checks");
+    render(); stamp("#p-checks");
+    /* The freshness row rides on the relay-fed /market fetch — append it whenever it lands
+       instead of holding the whole panel hostage to the slowest source. */
+    marketData().then(mk => { if (mk && mk.meta) { rows.push(row("Indexer freshness", "indexer last scanned block " + fmt(mk.meta.last_scanned), "live tip (mempool.space): block " + fmt(tipM), mk.meta.last_scanned >= tipM - 1, "If the indexer lagged the chain, every indexer-fed panel on this page would be stale — this is the check that catches it.")); render(); } }).catch(() => {});
   } catch (e) { $("#checks-body").innerHTML = row("Cross-checks", "—", "—", null, "One of the sources was unreachable from your browser (" + e.message + "). The check is shown as failed rather than quietly dropped."); }
 }
 

@@ -66,6 +66,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
     <span class="note" id="clock"></span>
     <span class="note"><span class="dot" id="dot-btc"></span>Bitcoin <span class="dot" id="dot-api"></span>Tacit API <span class="dot" id="dot-eth"></span>Ethereum <span class="dot" id="dot-base"></span>Base</span>
   </div>
+  <p id="snap-note" class="note" style="display:none;background:var(--panel2);border:1px solid var(--warn);border-radius:12px;padding:10px 14px;color:var(--ink)"></p>
 </header>
 <main>
   <!-- BRIDGE -->
@@ -164,7 +165,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   </section>
 </main>
 <footer>
-  <p><b>TACITLENS</b> — built for poidh bounty #1519 “Vibecode a Tacit Explorer”. Live sources: api.tacit.finance (relay + indexer + farms + market), tacitscan.io (linked), mempool.space &amp; blockstream.info (Bitcoin, cross-checked against each other), ethereum-rpc.publicnode.com &amp; base-rpc.publicnode.com (public RPC), Tacit EVM-pool keepers on Render, XNS registry on Ethereum. Contract addresses from Tacit's official <a href="https://github.com/src-company/tacit/blob/main/docs/DEPLOYMENTS.md" target="_blank" rel="noopener">DEPLOYMENTS.md</a>. If a panel shows an error, the source was unreachable from your browser at load time — the panel says so instead of inventing a number.</p>
+  <p><b>TACITLENS</b> — built for poidh bounty #1519 “Vibecode a Tacit Explorer”. Live sources: api.tacit.finance (relay + indexer + farms + market), tacitscan.io (linked), mempool.space &amp; blockstream.info (Bitcoin, cross-checked against each other), ethereum-rpc.publicnode.com &amp; base-rpc.publicnode.com (public RPC), Tacit EVM-pool keepers on Render, XNS registry on Ethereum. Contract addresses from Tacit's official <a href="https://github.com/src-company/tacit/blob/main/docs/DEPLOYMENTS.md" target="_blank" rel="noopener">DEPLOYMENTS.md</a>. If a panel shows an error, the source was unreachable from your browser at load time — the panel says so instead of inventing a number. Indexer-fed panels carry one labelled fallback: if every live CORS relay is unreachable, they show an auto-refreshed snapshot of the same indexer JSON (kept fresh by a scheduled GitHub Action in this repo, <span class="mono">data/</span> folder) under a visible banner — snapshot data is never passed off as live.</p>
   <p>Source repo: <a id="repo-link" href="https://github.com/hdr2804/tacitlens" target="_blank" rel="noopener">github.com/hdr2804/tacitlens</a> · Read-only: this page never asks for seed phrases or private keys and never moves funds.</p>
 </footer>
 <script src="app.js"></script>

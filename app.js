@@ -40,12 +40,26 @@ async function jgetIndexer(path) {
     () => jget("https://api.allorigins.win/raw?url=" + enc, 25000),
     () => jget("https://api.allorigins.win/get?url=" + enc, 25000).then(w => JSON.parse(w.contents)),
     () => jget("https://api.codetabs.com/v1/proxy?quest=" + target, 25000),
+    () => jgetText("https://r.jina.ai/" + target, 25000).then(txt => { const i = txt.indexOf("{"); if (i < 0) throw new Error("bad relay payload"); return JSON.parse(txt.slice(i)); }),
   ];
   const race = () => new Promise((resolve, reject) => {
     let left = attempts.length, done = false;
     attempts.forEach(fn => { fn().then(v => { if (!done) { done = true; resolve(v); } }, () => { if (--left === 0 && !done) reject(new Error("indexer unreachable via every relay")); }); });
   });
-  try { return await race(); } catch (e) { await new Promise(r => setTimeout(r, 1200)); return await race(); }
+  try { return await race(); } catch (e) { await new Promise(r => setTimeout(r, 1200)); try { return await race(); } catch (e2) {} }
+  /* Last resort, and labelled as such on the page: a same-origin snapshot of this exact JSON,
+     refreshed every ~30 minutes by a scheduled GitHub Action in the repo (data/ folder).
+     Stale-but-labelled beats blank — and it is never passed off as live. */
+  const snap = SNAPSHOT_FILES[path];
+  if (snap) { const d = await jget(snap, 15000); markSnapshot(); return d; }
+  throw new Error("indexer unreachable via every relay and no snapshot exists");
+}
+const SNAPSHOT_FILES = { "/assets?network=mainnet": "data/assets.json", "/amm/pools?network=mainnet": "data/amm-pools.json", "/market?network=mainnet": "data/market.json" };
+async function jgetText(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.text(); } finally { clearTimeout(t); } }
+function markSnapshot() {
+  if (G.snapShown) return; G.snapShown = true;
+  const show = ts => { const el = $("#snap-note"); if (!el) return; el.style.display = "block"; el.textContent = "⚠ The live CORS relays are unreachable from your browser right now, so the indexer-fed panels (envelopes, assets, AMM, market, freshness check) are showing an auto-refreshed snapshot of the same Tacit indexer JSON" + (ts ? " — fetched " + ts : "") + ", refreshed every ~30 min. Every other panel on this page is live. The snapshot is labelled, never passed off as live."; };
+  jget("data/meta.json", 8000).then(m => show(m && m.fetched_at)).catch(() => show(null));
 }
 /* Shared values for the measured-privacy row + one shared /market fetch (cross-checks + market panel). */
 const G = {};

@@ -1,0 +1,33 @@
+name: Refresh indexer snapshots
+
+# Keeps data/*.json fresh so the site's labelled snapshot fallback is never
+# more than ~30 minutes stale. The page always tries the live relays first;
+# these files are only served when every relay is unreachable.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch indexer JSON
+        run: |
+          mkdir -p data
+          curl -sS --fail --max-time 60 "https://api.tacit.finance/assets?network=mainnet" -o data/assets.json
+          curl -sS --fail --max-time 60 "https://api.tacit.finance/amm/pools?network=mainnet" -o data/amm-pools.json
+          curl -sS --fail --max-time 60 "https://api.tacit.finance/market?network=mainnet" -o data/market.json
+          python3 -c "import json,datetime; json.dump({'fetched_at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}, open('data/meta.json','w'))"
+          python3 -c "import json; [json.load(open(f)) for f in ['data/assets.json','data/amm-pools.json','data/market.json']]; print('JSON valid')"
+      - name: Commit if changed
+        run: |
+          git config user.name "tacitlens-snapshot-bot"
+          git config user.email "actions@github.com"
+          git add data/
+          git diff --cached --quiet || { git commit -m "Snapshot refresh $(date -u +%FT%TZ)"; git push; }

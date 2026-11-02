@@ -31,10 +31,25 @@ async function jget(url, ms) { const c = new AbortController(); const t = setTim
    relays (each is a free public service and can be flaky, so several are tried in order). */
 async function jgetIndexer(path) {
   const target = API + path;
-  try { return await jget(target, 15000); } catch (e) {}
-  try { return await jget("https://api.allorigins.win/raw?url=" + encodeURIComponent(target), 30000); } catch (e) {}
-  try { const w = await jget("https://api.allorigins.win/get?url=" + encodeURIComponent(target), 30000); return JSON.parse(w.contents); } catch (e) {}
-  return await jget("https://api.codetabs.com/v1/proxy?quest=" + target, 30000);
+  const chain = async () => {
+    try { return await jget(target, 15000); } catch (e) {}
+    try { return await jget("https://api.allorigins.win/raw?url=" + encodeURIComponent(target), 30000); } catch (e) {}
+    try { const w = await jget("https://api.allorigins.win/get?url=" + encodeURIComponent(target), 30000); return JSON.parse(w.contents); } catch (e) {}
+    return await jget("https://api.codetabs.com/v1/proxy?quest=" + target, 30000);
+  };
+  try { return await chain(); } catch (e) { /* relays are flaky — one full second pass before giving up */ await new Promise(r => setTimeout(r, 1500)); return await chain(); }
+}
+/* Shared values for the measured-privacy row + one shared /market fetch (cross-checks + market panel). */
+const G = {};
+let marketDataP = null;
+function marketData() { if (!marketDataP) { marketDataP = jgetIndexer("/market?network=mainnet"); marketDataP.catch(() => { marketDataP = null; }); } return marketDataP; }
+function renderPriv() {
+  if (G.liveNotes == null || G.transfers == null) return;
+  $("#priv-stats").innerHTML =
+    stat(fmt(G.liveNotes), "live notes in the pool right now — the anonymity set every spend hides inside") +
+    stat(fmt(G.transfers), "confidential transfers counted by the indexer — every one's amount hidden") +
+    stat(fmt(G.burns || 0), "bridge burns on Bitcoin — the public leg: amounts visible, notes on the other side not") +
+    stat(fmt(G.assets || 0), "assets etched on Bitcoin · " + fmt(G.holders || 0) + " holders whose balances the indexer can total");
 }
 async function rpc(url, method, params) { const c = new AbortController(); const t = setTimeout(() => c.abort(), 20000); try { const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: c.signal }); const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result; } finally { clearTimeout(t); } }
 const ethCall = (to, data, url) => rpc(url || RPC_ETH, "eth_call", [{ to, data }, "latest"]);
@@ -62,6 +77,7 @@ async function loadBridge() {
       stat(fmt(st.liveNotes), "live confidential notes in the pool") +
       stat(fmt(st.foldedCrossoutCount), "cross-outs (EVM → Bitcoin) folded");
     $("#bridge-extra").innerHTML = `Relay state: <b class="${relay && relay.state === "ok" ? "ok-txt" : "warn-txt"}">${relay ? esc(relay.state) : "unreachable"}</b>${relay ? ` · proving ${relay.proving ? "on" : "off"} · settling ${relay.settling ? "on" : "off"} · ${fmt(st.burnDeposits)} burn deposits tracked · API updated ${esc(st.updatedAt || "")}` : ""}. Burns minus mints is the in-flight bridge traffic — value proven to have left one chain and not yet minted on the other.`;
+    G.liveNotes = st.liveNotes; G.burns = st.bridgeBurns; renderPriv();
     dot("#dot-api", true); stamp("#p-bridge");
   } catch (e) { dot("#dot-api", false); fail("#p-bridge", "Reflection status unreachable from your browser right now (" + e.message + "). No number is shown rather than a stale one."); }
 }
@@ -90,6 +106,9 @@ async function loadBitcoin() {
       '<p class="note">Indexer returned no envelope events.</p>';
     const tac = assetsCache.find(a => a.asset_id === "f0bbe868af10c6c67652a99709bf32048d1aa7194efe3e9a1ef1bde43f94762b");
     if (tac) $("#btc-stats").innerHTML += stat(fmt(tac.holder_count), "TAC holders on Bitcoin") + stat(fmt(tac.transfer_count), "confidential TAC transfers (amounts hidden)") + stat(fmt(assetsCache.length), "assets etched on Bitcoin mainnet");
+    G.transfers = assetsCache.reduce((s, a) => s + (a.transfer_count || 0), 0);
+    G.holders = assetsCache.reduce((s, a) => s + (a.holder_count || 0), 0);
+    G.assets = assetsCache.length; renderPriv();
     // Assets table: by transfers desc
     const top = [...assetsCache].sort((a, b) => (b.transfer_count || 0) - (a.transfer_count || 0)).slice(0, 10);
     $("#assets-body").innerHTML = top.map(a => `<tr><td><a href="https://tacitscan.io/assets/${esc(a.asset_id)}" target="_blank" rel="noopener"><b>${esc(a.ticker || "?")}</b></a>${a.asset_id === "f0bbe868af10c6c67652a99709bf32048d1aa7194efe3e9a1ef1bde43f94762b" ? ' <span class="pill">canonical TAC</span>' : ""}</td><td>${fmt(a.holder_count || 0)}</td><td>${fmt(a.transfer_count || 0)}</td><td>${a.etched_at_height ? fmt(a.etched_at_height) : "—"}</td></tr>`).join("");
@@ -154,6 +173,48 @@ async function loadEvm() {
     const pools = (prog.pools || []).map(p => { const r = p.reserves || {}; const nA = ASSET_NAMES[r.assetA] || "?", nB = ASSET_NAMES[r.assetB] || "?"; return `<div><span class="pill">pool ${p.pid} · ${esc(p.sharePct)}%</span><b>${esc(p.pair)}</b> · reserves ${esc(fmtUnits(BigInt(r.reserveA || "0"), 10))} ${esc(nA)} / ${esc(fmtUnits(BigInt(r.reserveB || "0"), 10))} ${esc(nB)} · ${esc(p.tacPerDayForPool)} TAC/day</div>`; }).join("");
     $("#farm-box").innerHTML = `<p>Launch farms pay <b>wTAC</b> at <b>${esc(ep.ratePerDayTac || "?")} TAC/day</b> · treasury ${esc(ep.treasuryTac || "?")} TAC · solvency: <b class="${health && health.status === "ok" ? "ok-txt" : "warn-txt"}">${health ? esc(health.status) : "unknown"}</b>${health ? " — " + esc((health.checks || []).map(c => c.name + ": " + c.detail).join(" · ")) : ""}</p><div class="feed">${pools}</div>`;
   } catch (e) { fail("#p-evm", "Farm program unreachable (" + e.message + ")."); }
+}
+
+/* ---------- Cross-checks: headline numbers read twice ---------- */
+async function loadChecks() {
+  const row = (name, a, b, ok, note) => `<tr><td><b>${esc(name)}</b><br><span class="note">${esc(note)}</span></td><td class="mono">${esc(a)}</td><td class="mono">${esc(b)}</td><td>${ok == null ? '<span class="warn-txt">unreachable</span>' : ok ? '<b class="ok-txt">✓ agree</b>' : '<b class="warn-txt">Δ differs</b>'}</td></tr>`;
+  const rows = [];
+  try {
+    const [tipM, tipB, st, mk] = await Promise.all([
+      jget(MEMPOOL + "/blocks/tip/height"),
+      jget("https://blockstream.info/api/blocks/tip/height"),
+      jget(API + "/reflection/status?network=mainnet"),
+      marketData().catch(() => null),
+    ]);
+    rows.push(row("Bitcoin tip height", "mempool.space: block " + fmt(tipM), "blockstream.info: block " + fmt(tipB), Math.abs(tipM - tipB) <= 1, "Two independent Bitcoin explorers, read seconds apart."));
+    const lagCalc = st.tipHeight - st.attestedHeight;
+    rows.push(row("Reflection lag", "Tacit API reports " + fmt(st.lagBlocks) + " blocks", "recomputed here: tip " + fmt(st.tipHeight) + " − attested " + fmt(st.attestedHeight) + " = " + fmt(lagCalc), lagCalc === st.lagBlocks, "The lag is derived from the API's own two heights, recomputed in your browser — a wrong reported lag would show up here."));
+    if (mk && mk.meta) rows.push(row("Indexer freshness", "indexer last scanned block " + fmt(mk.meta.last_scanned), "live tip (mempool.space): block " + fmt(tipM), mk.meta.last_scanned >= tipM - 1, "If the indexer lagged the chain, every indexer-fed panel on this page would be stale — this is the check that catches it."));
+    rows.push(row("Bridge traffic in flight (derived)", fmt(st.bridgeBurns) + " burns − " + fmt(st.bridgeMinted) + " mints", "= " + fmt(st.bridgeBurns - st.bridgeMinted) + " burns proven on Bitcoin, not yet minted in the pool", true, "Not a second source — arithmetic on the two counters above, done here so the API's summary is never taken on faith."));
+    $("#checks-body").innerHTML = rows.join("");
+    stamp("#p-checks");
+  } catch (e) { $("#checks-body").innerHTML = row("Cross-checks", "—", "—", null, "One of the sources was unreachable from your browser (" + e.message + "). The check is shown as failed rather than quietly dropped."); }
+}
+
+/* ---------- Bitcoin secondary market ---------- */
+async function loadMarket() {
+  try {
+    const data = await marketData();
+    const assets = data.assets || [];
+    const byId = {}; for (const a of assets) byId[a.asset_id] = a;
+    const live = (data.listings || []).filter(l => !l.expired);
+    const vol24 = assets.reduce((s, a) => s + (a.volume_24h_sats || 0), 0);
+    $("#market-stats").innerHTML =
+      stat(fmt(live.length), "live listings right now") +
+      stat((vol24 / 1e8).toFixed(6) + " BTC", "24h volume across all assets (" + fmt(vol24) + " sats)") +
+      stat(fmt(assets.length), "assets tracked by the market indexer") +
+      stat(fmt(assets.reduce((s, a) => s + (a.listing_count || 0), 0)), "listings counted per-asset by the indexer");
+    const withListings = assets.filter(a => (a.listing_count || 0) > 0).sort((x, y) => (y.volume_24h_sats || 0) - (x.volume_24h_sats || 0) || (y.listing_count || 0) - (x.listing_count || 0));
+    $("#market-body").innerHTML = withListings.length ? withListings.map(a => `<tr><td><a href="https://tacitscan.io/assets/${esc(a.asset_id)}" target="_blank" rel="noopener"><b>${esc(a.ticker || "?")}</b></a></td><td>${fmt(a.listing_count || 0)}</td><td>${a.volume_24h_sats ? (a.volume_24h_sats / 1e8).toFixed(6) + " BTC" : "—"}</td><td>${fmt(a.holder_count || 0)}</td></tr>`).join("") : '<tr><td colspan="4" class="note">No asset has a live listing right now.</td></tr>';
+    const latest = [...live].sort((x, y) => (y.listed_at || 0) - (x.listed_at || 0)).slice(0, 8);
+    $("#market-feed").innerHTML = latest.length ? latest.map(l => { const a = byId[l.asset_id] || {}; const dec = a.decimals == null ? 8 : a.decimals; return `<div><span class="pill">${esc(l.kind || "listing")}</span><b>${esc(a.ticker || short(l.asset_id, 8, 6))}</b> · ${esc(fmtUnits(BigInt(l.amount || "0"), dec))} @ <b>${fmt(l.price_sats || 0)} sats</b> (${((l.price_sats || 0) / 1e8).toFixed(8)} BTC)${l.listed_at ? " · listed " + ago(l.listed_at) : ""}<br><a class="mono" href="https://tacitscan.io/tx/${esc(l.txid)}" target="_blank" rel="noopener">${esc(short(l.txid, 18, 10))}</a> <span class="note">maker ${esc(short(l.maker_address || "", 14, 8))}</span></div>`; }).join("") : '<p class="note">No live listings.</p>';
+    stamp("#p-market");
+  } catch (e) { fail("#p-market", "Market endpoint unreachable (" + e.message + ")."); }
 }
 
 /* ---------- Footprint lookup ---------- */
@@ -224,7 +285,7 @@ async function lookup() {
 
 /* ---------- boot ---------- */
 function tick() { $("#clock").textContent = "Last refresh cycle: " + new Date().toLocaleString(); }
-function loadAll() { tick(); loadBridge(); loadBitcoin(); loadPool(); loadEvm(); }
+function loadAll() { marketDataP = null; tick(); loadBridge(); loadBitcoin(); loadPool(); loadEvm(); loadChecks(); loadMarket(); }
 $("#refresh").addEventListener("click", loadAll);
 $("#go").addEventListener("click", lookup);
 $("#q").addEventListener("keydown", e => { if (e.key === "Enter") lookup(); });

@@ -65,6 +65,14 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
     <div id="bridge-extra" class="note"></div>
   </section>
 
+  <!-- CROSS-CHECKS -->
+  <section class="wide" id="p-checks">
+    <h2>✔️ Cross-checks — the headline numbers, read twice <span class="tag priv">VERIFY</span></h2>
+    <p class="src">Every explorer asks you to trust its numbers. This panel re-reads the load-bearing ones from a second, independent source — or recomputes them from raw values — right here in your browser, and shows both sides whether they agree or not. <span data-ts></span></p>
+    <table><thead><tr><th>Check</th><th>First read</th><th>Second read / recomputed</th><th>Verdict</th></tr></thead><tbody id="checks-body"><tr><td colspan="4" class="note">Running cross-checks…</td></tr></tbody></table>
+    <p class="note">A mismatch is shown, not hidden: the two reads happen seconds apart, so a one-block difference on a moving chain is normal — anything larger is flagged as-is.</p>
+  </section>
+
   <!-- BTC ENVELOPES -->
   <section id="p-env">
     <h2>✉️ Bitcoin — recent envelopes <span class="tag btc">BITCOIN</span></h2>
@@ -79,6 +87,16 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
     <p class="src">Sources: Tacit indexer <a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">/assets</a> + <a href="https://api.tacit.finance/amm/pools?network=mainnet" target="_blank" rel="noopener">/amm/pools</a> (network=mainnet, read via a public CORS relay — see the envelopes panel). Holder/transfer counts are the indexer's chain-derived state. <span data-ts></span></p>
     <div id="amm-box"><p class="note">Loading AMM pool…</p></div>
     <table><thead><tr><th>Asset</th><th>Holders</th><th>Transfers</th><th>Etched at block</th></tr></thead><tbody id="assets-body"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
+  </section>
+
+  <!-- BTC SECONDARY MARKET -->
+  <section id="p-market">
+    <h2>🏷️ Bitcoin — the secondary market <span class="tag btc">BITCOIN</span></h2>
+    <p class="src">Source: Tacit indexer <a href="https://api.tacit.finance/market?network=mainnet" target="_blank" rel="noopener">GET /market?network=mainnet</a> (read via a public CORS relay — see the envelopes panel). Listings are signed Bitcoin-side offers: the amount and the price in sats are public by design — a market cannot hide its own prices. Expired listings are filtered out. <span data-ts></span></p>
+    <div class="grid" id="market-stats"><div class="stat"><b>…</b><span>loading</span></div></div>
+    <table><thead><tr><th>Asset</th><th>Live listings</th><th>24h volume</th><th>Holders</th></tr></thead><tbody id="market-body"><tr><td colspan="4" class="note">Loading…</td></tr></tbody></table>
+    <h3 style="margin:14px 0 6px;font-size:15px">Latest listings</h3>
+    <div class="feed" id="market-feed"><p class="note">Loading listings…</p></div>
   </section>
 
   <!-- CONFIDENTIAL POOL -->
@@ -106,6 +124,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   <section class="wide" id="p-priv">
     <h2>🕵️ The privacy boundary — what this page can and cannot see <span class="tag priv">HONEST</span></h2>
     <p class="src">This panel is grounded in what the panels above actually fetched. Tacit hides <b>amounts</b> (Pedersen commitments + Bulletproofs) and <b>note-to-note links</b> — it does not hide that activity happened. Anyone telling you otherwise is overselling it.</p>
+    <div class="grid" id="priv-stats"><div class="stat"><b>…</b><span>measuring from the panels above</span></div></div>
     <div class="cols">
       <div class="cansee"><b>👀 An observer CAN see</b>
         <ul>
@@ -134,7 +153,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   </section>
 </main>
 <footer>
-  <p><b>TACITLENS</b> — built for poidh bounty #1519 “Vibecode a Tacit Explorer”. Live sources: api.tacit.finance (relay + indexer + farms), tacitscan.io (linked), mempool.space (Bitcoin), ethereum-rpc.publicnode.com &amp; base-rpc.publicnode.com (public RPC), Tacit EVM-pool keepers on Render, XNS registry on Ethereum. Contract addresses from Tacit's official <a href="https://github.com/src-company/tacit/blob/main/docs/DEPLOYMENTS.md" target="_blank" rel="noopener">DEPLOYMENTS.md</a>. If a panel shows an error, the source was unreachable from your browser at load time — the panel says so instead of inventing a number.</p>
+  <p><b>TACITLENS</b> — built for poidh bounty #1519 “Vibecode a Tacit Explorer”. Live sources: api.tacit.finance (relay + indexer + farms + market), tacitscan.io (linked), mempool.space &amp; blockstream.info (Bitcoin, cross-checked against each other), ethereum-rpc.publicnode.com &amp; base-rpc.publicnode.com (public RPC), Tacit EVM-pool keepers on Render, XNS registry on Ethereum. Contract addresses from Tacit's official <a href="https://github.com/src-company/tacit/blob/main/docs/DEPLOYMENTS.md" target="_blank" rel="noopener">DEPLOYMENTS.md</a>. If a panel shows an error, the source was unreachable from your browser at load time — the panel says so instead of inventing a number.</p>
   <p>Source repo: <a id="repo-link" href="https://github.com/hdr2804/tacitlens" target="_blank" rel="noopener">github.com/hdr2804/tacitlens</a> · Read-only: this page never asks for seed phrases or private keys and never moves funds.</p>
 </footer>
 <script src="app.js"></script>

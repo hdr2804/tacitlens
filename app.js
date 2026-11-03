@@ -197,7 +197,7 @@ async function keeperPanel(chainId, label, explorer, rpcUrl, win) {
 }
 async function loadEvm() {
   try {
-    const panels = await Promise.all([keeperPanel(1, "Ethereum", "https://etherscan.io/tx/", RPC_ETH, 3000), keeperPanel(8453, "Base", "https://basescan.org/tx/", RPC_BASE, 3000), keeperPanel(4663, "Robinhood", "https://robinhoodchain.blockscout.com/tx/", RPC_RH, 200000)]);
+    const panels = await Promise.all([keeperPanel(1, "Ethereum", "https://etherscan.io/tx/", RPC_ETH, 3000), keeperPanel(8453, "Base", "https://basescan.org/tx/", RPC_BASE, 3000), keeperPanel(4663, "Robinhood", "https://robinhoodchain.blockscout.com/tx/", RPC_RH, 8000000)]);
     $("#evm-stats").innerHTML = panels.map(p => stat(fmt(p.head.size), p.label + " EVM-pool notes (tree size)") ).join("");
     $("#evm-feed").innerHTML = panels.map(p => `<p style="margin:8px 0 2px"><b>${esc(p.label)}</b> <span class="note">root ${esc(short(String(p.head.root), 14, 8))}</span></p>` +
       (p.events.length ? p.events.map(e => `<div><span class="pill">${esc(e.kind)}</span>block ${fmt(e.block)} · <a class="mono" href="${p.explorer}${esc(e.tx)}" target="_blank" rel="noopener">${esc(short(e.tx, 16, 10))}</a> <span class="note">nullifiers + output leaves are public; the amount is not in the event.</span></div>`).join("") : '<p class="note">No events in the recent block window on this chain.</p>')).join("");

@@ -8,6 +8,7 @@ const RPC_ETH = "https://ethereum-rpc.publicnode.com";
 const RPC_BASE = "https://base-rpc.publicnode.com";
 const RPC_RH = "https://rpc.mainnet.chain.robinhood.com";
 const KEEPER = { 1: "https://tacit-evm-pool-keepers.onrender.com/1/evm-pool/keeper", 8453: "https://tacit-evm-pool-keepers.onrender.com/8453/evm-pool/keeper", 4663: "https://tacit-evm-pool-keepers.onrender.com/4663/evm-pool/keeper" };
+const RELAY = "0x20A6ddc2C6E620c6248B5A34E85996516FDd19D0";
 const POOL = "0x000000000Ed1eabD231Be41d93b719056F7febFC";
 const ENGINE = "0x000000003f608BDdF0ca45934003ffb9DbDF70DB";
 const XNS = "0x6e797ba2d3103aF167918e71a7E01DE40D45f74b";
@@ -92,26 +93,33 @@ const u256 = hex => BigInt(hex);
 function fmtUnits(raw, dec, maxFrac) { const v = Number(raw) / Math.pow(10, dec); return v.toLocaleString("en-US", { maximumFractionDigits: maxFrac == null ? 4 : maxFrac }); }
 function decodeString(hex) { if (!hex || hex === "0x") return ""; const b = hex.slice(2); const len = Number(u256("0x" + b.slice(64, 128))); let out = ""; for (let i = 0; i < len; i++) out += String.fromCharCode(parseInt(b.slice(128 + i * 2, 130 + i * 2), 16)); return out; }
 function encString(s) { const bytes = new TextEncoder().encode(s); const pad = Math.ceil(bytes.length / 32) * 32 || 32; let data = ""; bytes.forEach(x => data += x.toString(16).padStart(2, "0")); return (32).toString(16).padStart(64, "0") + bytes.length.toString(16).padStart(64, "0") + data.padEnd(pad * 2, "0"); }
-const SEL = { totalSupply: "0x18160ddd", decimals: "0x313ce567", symbol: "0x95d89b41", balanceOf: a => "0x70a08231" + a.toLowerCase().replace("0x", "").padStart(64, "0"), cbtcBackingSats: "0x9f5b61d9", outstandingCusd: "0xa42542c0", getName: a => "0x5fd4b08a" + a.toLowerCase().replace("0x", "").padStart(64, "0"), getAddress: n => "0xbf40fac1" + encString(n) };
+const SEL = { totalSupply: "0x18160ddd", decimals: "0x313ce567", symbol: "0x95d89b41", tipHeight: "0x1fd4827a", balanceOf: a => "0x70a08231" + a.toLowerCase().replace("0x", "").padStart(64, "0"), cbtcBackingSats: "0x9f5b61d9", outstandingCusd: "0xa42542c0", getName: a => "0x5fd4b08a" + a.toLowerCase().replace("0x", "").padStart(64, "0"), getAddress: n => "0xbf40fac1" + encString(n) };
 async function xnsName(addr) { try { const r = await ethCall(XNS, SEL.getName(addr)); const n = decodeString(r); return n || null; } catch (e) { return undefined; } } /* undefined = check failed, null = genuinely no name */
 async function xnsResolve(name) { const r = await ethCall(XNS, SEL.getAddress(name.toLowerCase())); const a = "0x" + r.slice(-40); return a === "0x0000000000000000000000000000000000000000" ? null : a; }
 function stat(b, s) { return `<div class="stat"><b>${esc(b)}</b><span>${esc(s)}</span></div>`; }
+function statC(b, s, cls) { return `<div class="stat"><b class="${esc(cls)}">${esc(b)}</b><span>${esc(s)}</span></div>`; }
 function dot(id, ok) { const el = $(id); if (el) el.className = "dot " + (ok ? "ok" : "bad"); }
 
 /* ---------- Bridge + relay ---------- */
 async function loadBridge() {
   try {
-    const [st, relay] = await Promise.all([jget(API + "/reflection/status?network=mainnet"), jget(API + "/confidential/relay").catch(() => null)]);
+    const [st, relay, chainTipHex] = await Promise.all([jget(API + "/reflection/status?network=mainnet"), jget(API + "/confidential/relay").catch(() => null), ethCall(RELAY, SEL.tipHeight).catch(() => null)]);
+    const chainTip = chainTipHex ? Number(u256(chainTipHex)) : null;
+    /* True reflection lag is measured against the relay contract itself, not the API's own tip:
+       green while the fold is close behind, amber once it trails past the fold depth, red beyond 24. */
+    const trueLag = chainTip != null ? chainTip - st.attestedHeight : st.lagBlocks;
+    const lagCls = trueLag < 6 ? "ok-txt" : trueLag <= 24 ? "warn-txt" : "err";
     $("#bridge-stats").innerHTML =
       stat(fmt(st.attestedHeight), "Bitcoin height folded into the pool (attested)") +
-      stat(fmt(st.tipHeight), "Bitcoin header-relay tip height") +
-      stat(fmt(st.lagBlocks) + " blocks", "reflection lag · folds at " + st.confirmations + " confirmations") +
+      stat(fmt(st.tipHeight), "Bitcoin header-relay tip height (Tacit API)") +
+      (chainTip != null ? stat(fmt(chainTip), "header-relay tip read on-chain — eth_call tipHeight() on the relay contract") : "") +
+      statC(fmt(trueLag) + " blocks", "reflection lag" + (chainTip != null ? " (on-chain tip − attested)" : "") + " · folds at " + st.confirmations + " confirmations", lagCls) +
       stat(fmt(st.bridgeBurns), "bridge burns seen on Bitcoin") +
       stat(fmt(st.bridgeMinted), "bridge mints completed in the pool") +
       stat(fmt(st.burnsAwaitingBundle), "burns awaiting bundle" + (st.oldestAwaitingHeight ? " · oldest at block " + fmt(st.oldestAwaitingHeight) : "")) +
       stat(fmt(st.liveNotes), "live confidential notes in the pool") +
       stat(fmt(st.foldedCrossoutCount), "cross-outs (EVM → Bitcoin) folded");
-    $("#bridge-extra").innerHTML = `Relay state: <b class="${relay && relay.state === "ok" ? "ok-txt" : "warn-txt"}">${relay ? esc(relay.state) : "unreachable"}</b>${relay ? ` · proving ${relay.proving ? "on" : "off"} · settling ${relay.settling ? "on" : "off"} · ${fmt(st.burnDeposits)} burn deposits tracked · API updated ${esc(st.updatedAt || "")}` : ""}. Burns minus mints is the in-flight bridge traffic — value proven to have left one chain and not yet minted on the other.`;
+    $("#bridge-extra").innerHTML = `Relay state: <b class="${relay && relay.state === "ok" ? "ok-txt" : "warn-txt"}">${relay ? esc(relay.state) : "unreachable"}</b>${relay ? ` · proving ${relay.proving ? "on" : "off"} · settling ${relay.settling ? "on" : "off"} · ${fmt(st.burnDeposits)} burn deposits tracked · API updated ${esc(st.updatedAt || "")}` : ""}. Burns minus mints is the in-flight bridge traffic — value proven to have left one chain and not yet minted on the other.${chainTip != null && chainTip !== st.tipHeight ? ` The on-chain relay tip (${fmt(chainTip)}) and the API's reported tip (${fmt(st.tipHeight)}) differ by ${fmt(Math.abs(chainTip - st.tipHeight))} blocks right now — the contract is the source the pool actually proves against, so this page shows both.` : ""}`;
     G.liveNotes = st.liveNotes; G.burns = st.bridgeBurns; renderPriv();
     dot("#dot-api", true); stamp("#p-bridge");
   } catch (e) { dot("#dot-api", false); fail("#p-bridge", "Reflection status unreachable from your browser right now (" + e.message + "). No number is shown rather than a stale one."); }
@@ -233,6 +241,10 @@ async function loadChecks() {
       const lagCalc = st.tipHeight - st.attestedHeight;
       rows.push(row("Reflection lag", "Tacit API reports " + fmt(st.lagBlocks) + " blocks", "recomputed here: tip " + fmt(st.tipHeight) + " − attested " + fmt(st.attestedHeight) + " = " + fmt(lagCalc), lagCalc === st.lagBlocks, "The lag is derived from the API's own two heights, recomputed in your browser — a wrong reported lag would show up here."));
       rows.push(row("Bridge traffic in flight (derived)", fmt(st.bridgeBurns) + " burns − " + fmt(st.bridgeMinted) + " mints", "= " + fmt(st.bridgeBurns - st.bridgeMinted) + " burns proven on Bitcoin, not yet minted in the pool", true, "Not a second source — arithmetic on the two counters above, done here so the API's summary is never taken on faith."));
+      try {
+        const chainTip = Number(u256(await ethCall(RELAY, SEL.tipHeight)));
+        rows.push(row("Header-relay tip — API vs the contract itself", "Tacit API reports tip " + fmt(st.tipHeight), "eth_call tipHeight() on BitcoinLightRelay 0x20A6…19D0: " + fmt(chainTip), Math.abs(chainTip - st.tipHeight) <= 1, "The relay contract is the thing being reported on — read directly from Ethereum here. The API's status view can trail the contract it describes; any gap is shown, not smoothed over."));
+      } catch (e2) { rows.push(row("Header-relay tip — API vs the contract itself", "Tacit API reports tip " + fmt(st.tipHeight), "on-chain read unreachable this load", null, "The Ethereum RPC read of the relay contract failed from your browser this load — shown as a single read, not dressed up as a cross-check.")); }
     } catch (e) { rows.push(row("Reflection lag", "—", "—", null, "Tacit's reflection status was unreachable from your browser this load (" + e.message + ").")); }
     render();
   })();

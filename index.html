@@ -73,7 +73,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
   <!-- BRIDGE -->
   <section class="wide" id="p-bridge">
     <h2>🌉 The bridge — Bitcoin reflection into the EVM pool <span class="tag bridge">BRIDGE</span></h2>
-    <p class="src">Source: Tacit relay API <a href="https://api.tacit.finance/reflection/status?network=mainnet" target="_blank" rel="noopener">GET /reflection/status?network=mainnet</a> · relay <a href="https://api.tacit.finance/confidential/relay" target="_blank" rel="noopener">GET /confidential/relay</a> · Bitcoin headers are relayed on-chain by the BitcoinLightRelay (<a href="https://etherscan.io/address/0x20A6ddc2C6E620c6248B5A34E85996516FDd19D0" target="_blank" rel="noopener">0x20A6…19D0</a>); SP1 proofs fold Bitcoin state into the pool once blocks are 24 confirmations deep. <span data-ts></span></p>
+    <p class="src">Source: Tacit relay API <a href="https://api.tacit.finance/reflection/status?network=mainnet" target="_blank" rel="noopener">GET /reflection/status?network=mainnet</a> · relay <a href="https://api.tacit.finance/confidential/relay" target="_blank" rel="noopener">GET /confidential/relay</a> · Bitcoin headers are relayed on-chain by the BitcoinLightRelay (<a href="https://etherscan.io/address/0x20A6ddc2C6E620c6248B5A34E85996516FDd19D0" target="_blank" rel="noopener">0x20A6…19D0</a>) — its tip is also read directly from the contract here via <span class="mono">eth_call tipHeight()</span>, and the lag is coloured against the fold depth; SP1 proofs fold Bitcoin state into the pool once blocks are 24 confirmations deep. <span data-ts></span></p>
     <div class="grid" id="bridge-stats"><div class="stat"><b>…</b><span>loading</span></div></div>
     <div id="bridge-extra" class="note"></div>
   </section>
@@ -170,6 +170,6 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:var(--dim);font-
 <footer>
   <p><b>TACITLENS</b> — built for poidh bounty #1519 “Vibecode a Tacit Explorer”. Sources (all live): api.tacit.finance, mempool.space + blockstream.info (cross-checked against each other), public Ethereum/Base/Robinhood RPC, Tacit EVM-pool keepers on all three chains, XNS registry. Contract addresses from Tacit's official <a href="https://github.com/src-company/tacit/blob/main/docs/DEPLOYMENTS.md" target="_blank" rel="noopener">DEPLOYMENTS.md</a>. If a source is unreachable, its panel says so instead of inventing a number. Read-only: this page never asks for seed phrases or private keys and never moves funds. Repo: <a id="repo-link" href="https://github.com/hdr2804/tacitlens" target="_blank" rel="noopener">github.com/hdr2804/tacitlens</a></p>
 </footer>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

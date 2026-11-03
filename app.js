@@ -6,7 +6,8 @@ const API = "https://api.tacit.finance";
 const MEMPOOL = "https://mempool.space/api";
 const RPC_ETH = "https://ethereum-rpc.publicnode.com";
 const RPC_BASE = "https://base-rpc.publicnode.com";
-const KEEPER = { 1: "https://tacit-evm-pool-keepers.onrender.com/1/evm-pool/keeper", 8453: "https://tacit-evm-pool-keepers.onrender.com/8453/evm-pool/keeper" };
+const RPC_RH = "https://rpc.mainnet.chain.robinhood.com";
+const KEEPER = { 1: "https://tacit-evm-pool-keepers.onrender.com/1/evm-pool/keeper", 8453: "https://tacit-evm-pool-keepers.onrender.com/8453/evm-pool/keeper", 4663: "https://tacit-evm-pool-keepers.onrender.com/4663/evm-pool/keeper" };
 const POOL = "0x000000000Ed1eabD231Be41d93b719056F7febFC";
 const ENGINE = "0x000000003f608BDdF0ca45934003ffb9DbDF70DB";
 const XNS = "0x6e797ba2d3103aF167918e71a7E01DE40D45f74b";
@@ -186,22 +187,22 @@ async function loadPool() {
 }
 
 /* ---------- EVM pool (ETH + Base) + farms ---------- */
-async function keeperPanel(chainId, label, explorer) {
+async function keeperPanel(chainId, label, explorer, rpcUrl, win) {
   const head = await jget(KEEPER[chainId] + "/head");
-  const blockHex = await rpc(chainId === 1 ? RPC_ETH : RPC_BASE, "eth_blockNumber", []);
-  const from = Math.max(0, parseInt(blockHex, 16) - 3000);
+  const blockHex = await rpc(rpcUrl, "eth_blockNumber", []);
+  const from = Math.max(0, parseInt(blockHex, 16) - (win || 3000));
   let events = [];
   try { const ev = await jget(KEEPER[chainId] + "/events?from=" + from, 30000); events = (ev.events || []).slice(-5).reverse(); } catch (e) { /* head alone still renders */ }
   return { head, events, label, explorer, chainId };
 }
 async function loadEvm() {
   try {
-    const panels = await Promise.all([keeperPanel(1, "Ethereum", "https://etherscan.io/tx/"), keeperPanel(8453, "Base", "https://basescan.org/tx/")]);
+    const panels = await Promise.all([keeperPanel(1, "Ethereum", "https://etherscan.io/tx/", RPC_ETH, 3000), keeperPanel(8453, "Base", "https://basescan.org/tx/", RPC_BASE, 3000), keeperPanel(4663, "Robinhood", "https://robinhoodchain.blockscout.com/tx/", RPC_RH, 200000)]);
     $("#evm-stats").innerHTML = panels.map(p => stat(fmt(p.head.size), p.label + " EVM-pool notes (tree size)") ).join("");
     $("#evm-feed").innerHTML = panels.map(p => `<p style="margin:8px 0 2px"><b>${esc(p.label)}</b> <span class="note">root ${esc(short(String(p.head.root), 14, 8))}</span></p>` +
-      (p.events.length ? p.events.map(e => `<div><span class="pill">${esc(e.kind)}</span>block ${fmt(e.block)} · <a class="mono" href="${p.explorer}${esc(e.tx)}" target="_blank" rel="noopener">${esc(short(e.tx, 16, 10))}</a> <span class="note">nullifiers + output leaves are public; the amount is not in the event.</span></div>`).join("") : '<p class="note">No events in the last ~3,000 blocks on this chain.</p>')).join("");
-    dot("#dot-base", true); stamp("#p-evm");
-  } catch (e) { dot("#dot-base", false); fail("#p-evm", "EVM-pool keeper unreachable (" + e.message + ")."); }
+      (p.events.length ? p.events.map(e => `<div><span class="pill">${esc(e.kind)}</span>block ${fmt(e.block)} · <a class="mono" href="${p.explorer}${esc(e.tx)}" target="_blank" rel="noopener">${esc(short(e.tx, 16, 10))}</a> <span class="note">nullifiers + output leaves are public; the amount is not in the event.</span></div>`).join("") : '<p class="note">No events in the recent block window on this chain.</p>')).join("");
+    dot("#dot-base", true); dot("#dot-rh", true); stamp("#p-evm");
+  } catch (e) { dot("#dot-base", false); dot("#dot-rh", false); fail("#p-evm", "EVM-pool keeper unreachable (" + e.message + ")."); }
   try {
     const [prog, health] = await Promise.all([jget(API + "/farm/program?network=mainnet"), jget(API + "/farm/health").catch(() => null)]);
     const ep = prog.epoch || {};
@@ -267,9 +268,10 @@ async function loadMarket() {
 /* ---------- Footprint lookup ---------- */
 function out(html) { $("#look-out").innerHTML = html; }
 async function lookupEvmAddress(addr, viaName) {
-  const [balE, balB, name, points] = await Promise.all([
+  const [balE, balB, balR, name, points] = await Promise.all([
     rpc(RPC_ETH, "eth_getBalance", [addr, "latest"]).catch(() => null),
     rpc(RPC_BASE, "eth_getBalance", [addr, "latest"]).catch(() => null),
+    rpc(RPC_RH, "eth_getBalance", [addr, "latest"]).catch(() => null),
     xnsName(addr),
     jget(API + "/points/" + addr).catch(() => null),
   ]);
@@ -281,10 +283,11 @@ async function lookupEvmAddress(addr, viaName) {
   <div class="grid">
     ${balE != null ? stat((Number(u256(balE)) / 1e18).toFixed(6) + " ETH", "public balance on Ethereum") : ""}
     ${balB != null ? stat((Number(u256(balB)) / 1e18).toFixed(6) + " ETH", "public balance on Base") : ""}
+    ${balR != null ? stat((Number(u256(balR)) / 1e18).toFixed(6) + " ETH", "public balance on Robinhood Chain") : ""}
     ${points ? stat(fmt(points.points != null ? points.points : (points.total != null ? points.total : "?")), "Tacit points (public program)") : ""}
   </div>
   ${rows ? `<table><thead><tr><th>Public ERC-20</th><th>Balance</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="note">No public TAC / tacBTC / tacUSD / wTAC balance. Confidential pool notes held by this address are <b>not</b> visible here — by design, they are recoverable only from the owner\'s key.</p>'}
-  <p class="note">Full history: <a href="https://etherscan.io/address/${esc(addr)}" target="_blank" rel="noopener">Etherscan</a> · <a href="https://basescan.org/address/${esc(addr)}" target="_blank" rel="noopener">Basescan</a>. Public means public: balances, counterparties and timing of every public transaction this address ever made.</p>`);
+  <p class="note">Full history: <a href="https://etherscan.io/address/${esc(addr)}" target="_blank" rel="noopener">Etherscan</a> · <a href="https://basescan.org/address/${esc(addr)}" target="_blank" rel="noopener">Basescan</a> · <a href="https://robinhoodchain.blockscout.com/address/${esc(addr)}" target="_blank" rel="noopener">Robinhood Blockscout</a>. Public means public: balances, counterparties and timing of every public transaction this address ever made.</p>`);
 }
 async function lookup() {
   const q = $("#q").value.trim();
@@ -313,9 +316,12 @@ async function lookup() {
       } catch (e) { /* not a Bitcoin tx — try EVM */ }
       const eht = await rpc(RPC_ETH, "eth_getTransactionByHash", ["0x" + q.toLowerCase()]).catch(() => null);
       const bat = eht ? null : await rpc(RPC_BASE, "eth_getTransactionByHash", ["0x" + q.toLowerCase()]).catch(() => null);
-      const t = eht || bat;
-      if (t) { out(`<p><b>EVM transaction</b> on ${eht ? "Ethereum" : "Base"} <span class="mono">${esc(short("0x" + q, 20, 12))}</span></p><div class="grid">${stat(fmt(parseInt(t.blockNumber, 16)), "block")}${stat(esc(short(t.from, 12, 8)), "from — public")}${stat(esc(short(t.to || "contract creation", 12, 8)), "to — public")}${stat((Number(u256(t.value)) / 1e18) + " ETH", "public value (pool-internal amounts would stay hidden)")}</div><p class="note"><a href="${eht ? "https://etherscan.io/tx/0x" : "https://basescan.org/tx/0x"}${esc(q.toLowerCase())}" target="_blank" rel="noopener">open in explorer</a></p>`); return; }
-      out('<p class="err">That 64-hex ID was not found as a Bitcoin tx or as an EVM tx on Ethereum/Base.</p>'); return;
+      const rht = (eht || bat) ? null : await rpc(RPC_RH, "eth_getTransactionByHash", ["0x" + q.toLowerCase()]).catch(() => null);
+      const t = eht || bat || rht;
+      const chainName = eht ? "Ethereum" : bat ? "Base" : "Robinhood Chain";
+      const explorer = eht ? "https://etherscan.io/tx/0x" : bat ? "https://basescan.org/tx/0x" : "https://robinhoodchain.blockscout.com/tx/0x";
+      if (t) { out(`<p><b>EVM transaction</b> on ${chainName} <span class="mono">${esc(short("0x" + q, 20, 12))}</span></p><div class="grid">${stat(fmt(parseInt(t.blockNumber, 16)), "block")}${stat(esc(short(t.from, 12, 8)), "from — public")}${stat(esc(short(t.to || "contract creation", 12, 8)), "to — public")}${stat((Number(u256(t.value)) / 1e18) + " ETH", "public value (pool-internal amounts would stay hidden)")}</div><p class="note"><a href="${explorer}${esc(q.toLowerCase())}" target="_blank" rel="noopener">open in explorer</a></p>`); return; }
+      out('<p class="err">That 64-hex ID was not found as a Bitcoin tx or as an EVM tx on Ethereum/Base/Robinhood.</p>'); return;
     }
     if (/^(bc1|tb1)[02-9ac-hj-np-z]+$/i.test(q)) {
       const a = await jget(MEMPOOL + "/address/" + q);

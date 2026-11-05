@@ -25,7 +25,7 @@ const fmt = n => Number(n).toLocaleString("en-US");
 const short = (s, a, b) => s && s.length > (a + b + 1) ? s.slice(0, a) + "…" + s.slice(-b) : s;
 const ago = ts => { const d = Date.now() / 1000 - ts; const u = (n, w) => n + " " + w + (n === 1 ? "" : "s") + " ago"; if (d < 90) return "just now"; if (d < 3600) return u(Math.round(d / 60), "minute"); if (d < 86400) return u(Math.round(d / 3600), "hour"); return u(Math.round(d / 86400), "day"); };
 function stamp(panel) { const el = $(panel + " [data-ts]"); if (el) el.textContent = "· updated " + new Date().toLocaleTimeString(); }
-function fail(panel, msg) { const el = $(panel); if (el) { const p = document.createElement("p"); p.className = "err"; p.textContent = "⚠ " + msg; el.appendChild(p); } }
+function fail(panel, msg) { const el = $(panel); if (el) { let p = el.querySelector(":scope > .panel-err"); if (!p) { p = document.createElement("p"); p.className = "err panel-err"; el.appendChild(p); } p.textContent = "⚠ " + msg; } }
 async function jget(url, ms) { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms || 20000); try { const r = await fetch(url, { signal: c.signal, cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); } finally { clearTimeout(t); } }
 /* The indexer endpoints (/assets, /amm) set Access-Control-Allow-Origin to the tacit.finance
    origin only, so from any other origin they are read through public CORS relays.
@@ -122,7 +122,7 @@ async function loadBridge() {
     $("#bridge-extra").innerHTML = `Relay state: <b class="${relay && relay.state === "ok" ? "ok-txt" : "warn-txt"}">${relay ? esc(relay.state) : "unreachable"}</b>${relay ? ` · proving ${relay.proving ? "on" : "off"} · settling ${relay.settling ? "on" : "off"} · ${fmt(st.burnDeposits)} burn deposits tracked · API updated ${esc(st.updatedAt || "")}` : ""}. Burns minus mints is the in-flight bridge traffic — value proven to have left one chain and not yet minted on the other.${chainTip != null && chainTip !== st.tipHeight ? ` The on-chain relay tip (${fmt(chainTip)}) and the API's reported tip (${fmt(st.tipHeight)}) differ by ${fmt(Math.abs(chainTip - st.tipHeight))} blocks right now — the contract is the source the pool actually proves against, so this page shows both.` : ""}`;
     G.liveNotes = st.liveNotes; G.burns = st.bridgeBurns; renderPriv();
     dot("#dot-api", true); stamp("#p-bridge");
-  } catch (e) { dot("#dot-api", false); fail("#p-bridge", "Reflection status unreachable from your browser right now (" + e.message + "). No number is shown rather than a stale one."); }
+  } catch (e) { dot("#dot-api", false); $("#bridge-stats").innerHTML = '<div class="stat"><b>—</b><span>bridge reads unavailable</span></div>'; fail("#p-bridge", "Reflection status unreachable from your browser right now (" + e.message + "). No number is shown rather than a stale one."); }
 }
 
 /* ---------- Bitcoin: chain tip, envelopes, assets, AMM ---------- */
@@ -155,9 +155,9 @@ async function loadBitcoin() {
     G.assets = assetsCache.length; renderPriv();
     // Assets table: by transfers desc
     const top = [...assetsCache].sort((a, b) => (b.transfer_count || 0) - (a.transfer_count || 0)).slice(0, 10);
-    $("#assets-body").innerHTML = top.map(a => `<tr><td><a href="https://tacitscan.io/assets/${esc(a.asset_id)}" target="_blank" rel="noopener"><b>${esc(a.ticker || "?")}</b></a>${a.asset_id === "f0bbe868af10c6c67652a99709bf32048d1aa7194efe3e9a1ef1bde43f94762b" ? ' <span class="pill">canonical TAC</span>' : ""}</td><td>${fmt(a.holder_count || 0)}</td><td>${fmt(a.transfer_count || 0)}</td><td>${a.etched_at_height ? fmt(a.etched_at_height) : "—"}</td></tr>`).join("");
+    $("#assets-body").innerHTML = top.length ? top.map(a => `<tr><td><a href="https://tacitscan.io/assets/${esc(a.asset_id)}" target="_blank" rel="noopener"><b>${esc(a.ticker || "?")}</b></a>${a.asset_id === "f0bbe868af10c6c67652a99709bf32048d1aa7194efe3e9a1ef1bde43f94762b" ? ' <span class="pill">canonical TAC</span>' : ""}</td><td>${fmt(a.holder_count || 0)}</td><td>${fmt(a.transfer_count || 0)}</td><td>${a.etched_at_height ? fmt(a.etched_at_height) : "—"}</td></tr>`).join("") : '<tr><td colspan="4" class="note">Indexer returned no assets.</td></tr>';
     stamp("#p-env"); stamp("#p-assets");
-  } catch (e) { fail("#p-env", "Tacit indexer /assets unreachable (" + e.message + "). Envelope feed cannot be shown."); }
+  } catch (e) { $("#assets-body").innerHTML = '<tr><td colspan="4" class="note">Assets table unavailable — the indexer did not answer.</td></tr>'; fail("#p-env", "Tacit indexer /assets unreachable (" + e.message + "). Envelope feed cannot be shown."); }
   try {
     const amm = await jgetIndexer("/amm/pools?network=mainnet");
     const p = (amm.pools || [])[0];
@@ -166,7 +166,7 @@ async function loadBitcoin() {
     $("#amm-box").innerHTML = `<p><b>Bitcoin-native AMM — ${esc(nameA)} / ${esc(nameB)}</b> <span class="pill">${esc(p.validation || "")}</span> <span class="pill">fee ${(p.fee_bps / 100)}%</span></p>
       <div class="grid">${stat(fmtUnits(BigInt(p.reserve_a), 8), "reserve " + nameA)}${stat(fmtUnits(BigInt(p.reserve_b), 8), "reserve " + nameB)}${stat(fmt(p.lp_total_shares), "LP shares (" + fmt(p.locked_shares) + " locked)")}${stat(p.last_swap_height ? fmt(p.last_swap_height) : "—", "last swap block" + (p.last_swap_at ? " · " + ago(p.last_swap_at) : ""))}</div>
       <p class="note">Pool <span class="mono">${esc(short(p.pool_id, 16, 10))}</span> · founded in reveal tx <a class="mono" href="https://mempool.space/tx/${esc(p.init_txid)}" target="_blank" rel="noopener">${esc(short(p.init_txid, 16, 10))}</a> at block ${fmt(p.init_height || 0)}. Reserves are Bitcoin-side notes — no Ethereum contract exists for this pool.</p>`;
-  } catch (e) { fail("#p-assets", "AMM pool endpoint unreachable (" + e.message + ")."); }
+  } catch (e) { $("#amm-box").innerHTML = '<p class="note">AMM pool unavailable right now — the endpoint did not answer.</p>'; fail("#p-assets", "AMM pool endpoint unreachable (" + e.message + ")."); }
 }
 
 /* ---------- ConfidentialPool + tokens ---------- */
@@ -178,7 +178,7 @@ async function loadPool() {
       stat(fmtUnits(u256(cusd), 10) + " cUSD", "CDP debt outstanding on CollateralEngine (raw " + fmt(u256(cusd).toString()) + " in-system units)");
     $("#pool-stats").innerHTML = stats;
     dot("#dot-eth", true); stamp("#p-pool");
-  } catch (e) { dot("#dot-eth", false); fail("#p-pool", "Ethereum RPC read failed (" + e.message + ")."); }
+  } catch (e) { dot("#dot-eth", false); $("#pool-stats").innerHTML = '<div class="stat"><b>—</b><span>pool reads unavailable</span></div>'; fail("#p-pool", "Ethereum RPC read failed (" + e.message + ")."); }
   try {
     const open = await jget(API + "/confidential/open?limit=10");
     const jobs = open.jobs || [];
@@ -191,7 +191,7 @@ async function loadPool() {
       rows.push(`<tr><td><b>${esc(decodeString(sym) || t.sym)}</b> <span class="note">${esc(t.name)}</span></td><td class="mono">${esc(fmtUnits(u256(sup), Number(u256(dec))))}</td><td><a class="mono" href="https://etherscan.io/address/${t.addr}" target="_blank" rel="noopener">${esc(short(t.addr, 10, 8))}</a></td></tr>`);
     }
     $("#tokens-body").innerHTML = rows.join("");
-  } catch (e) { fail("#p-pool", "Token supply reads failed (" + e.message + ")."); }
+  } catch (e) { $("#tokens-body").innerHTML = '<tr><td colspan="3" class="note">Supply reads unavailable — the RPC did not answer.</td></tr>'; fail("#p-pool", "Token supply reads failed (" + e.message + ")."); }
 }
 
 /* ---------- EVM pool (ETH + Base) + farms ---------- */
@@ -210,7 +210,7 @@ async function loadEvm() {
     $("#evm-feed").innerHTML = panels.map(p => `<p style="margin:8px 0 2px"><b>${esc(p.label)}</b> <span class="note">root ${esc(short(String(p.head.root), 14, 8))}</span></p>` +
       (p.events.length ? p.events.map(e => `<div><span class="pill">${esc(e.kind)}</span>block ${fmt(e.block)} · <a class="mono" href="${p.explorer}${esc(e.tx)}" target="_blank" rel="noopener">${esc(short(e.tx, 16, 10))}</a> <span class="note">nullifiers + output leaves are public; the amount is not in the event.</span></div>`).join("") : '<p class="note">No events in the recent block window on this chain.</p>')).join("");
     dot("#dot-base", true); dot("#dot-rh", true); stamp("#p-evm");
-  } catch (e) { dot("#dot-base", false); dot("#dot-rh", false); fail("#p-evm", "EVM-pool keeper unreachable (" + e.message + ")."); }
+  } catch (e) { dot("#dot-base", false); dot("#dot-rh", false); $("#evm-stats").innerHTML = '<div class="stat"><b>—</b><span>EVM-pool reads unavailable</span></div>'; fail("#p-evm", "EVM-pool keeper unreachable (" + e.message + ")."); }
   try {
     const [prog, health] = await Promise.all([jget(API + "/farm/program?network=mainnet"), jget(API + "/farm/health").catch(() => null)]);
     const ep = prog.epoch || {};
@@ -274,7 +274,7 @@ async function loadMarket() {
     const trades = assets.filter(a => a.last_trade && a.last_trade.ts).sort((x, y) => y.last_trade.ts - x.last_trade.ts).slice(0, 5);
     $("#market-trades").innerHTML = trades.length ? trades.map(a => { const t = a.last_trade; const dec = a.decimals == null ? 8 : a.decimals; return `<div><span class="pill">trade</span><b>${esc(a.ticker || "?")}</b> · ${esc(fmtUnits(BigInt(t.amount || "0"), dec))} @ <b>${fmt(t.price_sats || 0)} sats</b>${t.fill_count ? " · " + fmt(t.fill_count) + " fill(s)" : ""} · ${ago(t.ts)}<br><a class="mono" href="https://tacitscan.io/tx/${esc(t.txid)}" target="_blank" rel="noopener">${esc(short(t.txid, 18, 10))}</a> <span class="note">on tacitscan</span></div>`; }).join("") : '<p class="note">No asset reports a last trade.</p>';
     stamp("#p-market");
-  } catch (e) { fail("#p-market", "Market endpoint unreachable (" + e.message + ")."); }
+  } catch (e) { $("#market-body").innerHTML = '<tr><td colspan="4" class="note">Market table unavailable — the endpoint did not answer.</td></tr>'; fail("#p-market", "Market endpoint unreachable (" + e.message + ")."); }
 }
 
 /* ---------- Footprint lookup ---------- */
@@ -291,7 +291,7 @@ async function lookupEvmAddress(addr, viaName) {
   for (const t of TOKENS) {
     try { const b = await ethCall(t.addr, SEL.balanceOf(addr)); if (t.dec == null) t.dec = Number(u256(await ethCall(t.addr, SEL.decimals))); const v = u256(b); if (v > 0n) rows += `<tr><td>${esc(t.sym)}</td><td class="mono">${esc(fmtUnits(v, t.dec))}</td></tr>`; } catch (e) { /* skip */ }
   }
-  out(`<p><b>EVM address</b> <span class="mono">${esc(addr)}</span>${viaName ? ` <span class="pill">via XNS ${esc(viaName)}</span>` : ""}${name ? ` · XNS name: <b>${esc(name)}</b> ✅` : name === undefined ? " · XNS reverse check was unreachable this time (RPC) — not the same as having no name" : " · no XNS name registered for this address"}</p>
+  out(`<p><b>EVM address</b> <span class="mono">${esc(addr)}</span><button type="button" class="copybtn" data-copy="${esc(addr)}">copy</button>${viaName ? ` <span class="pill">via XNS ${esc(viaName)}</span>` : ""}${name ? ` · XNS name: <b>${esc(name)}</b> ✅` : name === undefined ? " · XNS reverse check was unreachable this time (RPC) — not the same as having no name" : " · no XNS name registered for this address"}</p>
   <div class="grid">
     ${balE != null ? stat((Number(u256(balE)) / 1e18).toFixed(6) + " ETH", "public balance on Ethereum") : ""}
     ${balB != null ? stat((Number(u256(balB)) / 1e18).toFixed(6) + " ETH", "public balance on Base") : ""}
@@ -351,7 +351,13 @@ async function lookup() {
 /* ---------- boot ---------- */
 function tick() { $("#clock").textContent = "Last refresh cycle: " + new Date().toLocaleString(); }
 function loadAll() { marketDataP = null; tick(); loadBridge(); loadBitcoin(); loadPool(); loadEvm(); loadChecks(); loadMarket(); }
-$("#refresh").addEventListener("click", loadAll);
+$("#refresh").addEventListener("click", () => { const b = $("#refresh"); const old = b.textContent; b.textContent = "↻ Refreshing…"; loadAll(); setTimeout(() => { b.textContent = old; }, 1500); });
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-fill]");
+  if (f) { e.preventDefault(); $("#q").value = f.getAttribute("data-fill"); $("#p-look").scrollIntoView({ behavior: "smooth", block: "start" }); lookup(); return; }
+  const c = e.target.closest("[data-copy]");
+  if (c) { const done = () => { const old = c.textContent; c.textContent = "copied ✓"; setTimeout(() => { c.textContent = old; }, 1200); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(c.getAttribute("data-copy")).then(done, done); else done(); }
+});
 $("#go").addEventListener("click", lookup);
 $("#q").addEventListener("keydown", e => { if (e.key === "Enter") lookup(); });
 loadAll();

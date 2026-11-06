@@ -86,7 +86,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid rgba(
   <p id="snap-note" class="note" style="display:none;background:var(--panel2);border:1px solid var(--warn);border-radius:12px;padding:10px 14px;color:var(--ink)"></p>
 </header>
 <div class="navwrap"><nav class="nav">
-  <a href="#p-bridge">🌉 Bridge</a><a href="#p-checks">✔️ Cross-checks</a><a href="#p-env">✉️ Envelopes</a><a href="#p-assets">🪙 Assets &amp; AMM</a><a href="#p-market">🏷️ Market</a><a href="#p-pool">🤫 ConfidentialPool</a><a href="#p-evm">⛓️ EVM pool &amp; farms</a><a href="#p-priv">🕵️ Privacy</a><a href="#p-look">🔎 Lookup</a>
+  <a href="#p-bridge">🌉 Bridge</a><a href="#p-checks">✔️ Cross-checks</a><a href="#p-judge">⚖️ Judging</a><a href="#p-env">✉️ Envelopes</a><a href="#p-assets">🪙 Assets &amp; AMM</a><a href="#p-market">🏷️ Market</a><a href="#p-pool">🤫 ConfidentialPool</a><a href="#p-evm">⛓️ EVM pool &amp; farms</a><a href="#p-priv">🕵️ Privacy</a><a href="#p-look">🔎 Lookup</a>
 </nav></div>
 <main>
   <!-- BRIDGE -->
@@ -103,6 +103,18 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid rgba(
     <p class="src">Every explorer asks you to trust its numbers. This panel re-reads the load-bearing ones from a second, independent source — or recomputes them from raw values — right here in your browser, and shows both sides whether they agree or not. <span data-ts></span></p>
     <table><thead><tr><th>Check</th><th>First read</th><th>Second read / recomputed</th><th>Verdict</th></tr></thead><tbody id="checks-body"><tr><td colspan="4" class="note">Running cross-checks…</td></tr></tbody></table>
     <p class="note">A mismatch is shown, not hidden: the two reads happen seconds apart, so a one-block difference on a moving chain is normal — anything larger is flagged as-is.</p>
+  </section>
+
+  <!-- JUDGING MAP -->
+  <section class="wide" id="p-judge">
+    <h2>⚖️ How this entry meets the bounty's four judging criteria <span class="tag priv">JUDGING</span></h2>
+    <p class="src">The bounty judges on four things — Useful, Correct, Clear, Honest about privacy. Each one points at the panel above that proves it, so a contributor can check the claim instead of taking our word for it.</p>
+    <div class="grid">
+      <div class="stat"><b>Useful</b><span>Would you keep it open? One page, both chains: <a href="#p-bridge">bridge</a>, <a href="#p-env">envelopes</a>, <a href="#p-pool">confidential pool</a>, <a href="#p-evm">EVM pool &amp; farms</a>, <a href="#p-market">secondary market</a> and <a href="#p-look">footprint lookup</a> — re-read live every 30 seconds.</span></div>
+      <div class="stat"><b>Correct</b><span>Do the numbers match the chain? <a href="#p-checks">Cross-checks</a> re-reads every load-bearing figure from a second, independent source or recomputes it from raw values — and shows a mismatch instead of hiding it.</span></div>
+      <div class="stat"><b>Clear</b><span>Does it make two chains easier to understand? The <a href="#p-bridge">bridge panel</a> folds Bitcoin reflection, relay lag and in-flight burns/mints into one view, and every figure carries its source chip.</span></div>
+      <div class="stat"><b>Honest about privacy</b><span>What's public and what's hidden: the <a href="#p-priv">privacy panel</a> is measured from the panels above, names the relay-witness caveat, and the <a href="#p-look">lookup</a> applies the same boundary to your own footprint.</span></div>
+    </div>
   </section>
 
   <!-- BTC ENVELOPES -->

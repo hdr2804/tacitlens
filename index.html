@@ -86,7 +86,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid rgba(
   <p id="snap-note" class="note" style="display:none;background:var(--panel2);border:1px solid var(--warn);border-radius:12px;padding:10px 14px;color:var(--ink)"></p>
 </header>
 <div class="navwrap"><nav class="nav">
-  <a href="#p-bridge">🌉 Bridge</a><a href="#p-checks">✔️ Cross-checks</a><a href="#p-repro">🧪 Reproduce</a><a href="#p-judge">⚖️ Judging</a><a href="#p-env">✉️ Envelopes</a><a href="#p-assets">🪙 Assets &amp; AMM</a><a href="#p-market">🏷️ Market</a><a href="#p-pool">🤫 ConfidentialPool</a><a href="#p-evm">⛓️ EVM pool &amp; farms</a><a href="#p-priv">🕵️ Privacy</a><a href="#p-look">🔎 Lookup</a>
+  <a href="#p-bridge">🌉 Bridge</a><a href="#p-checks">✔️ Cross-checks</a><a href="#p-repro">🧪 Reproduce</a><a href="#p-judge">⚖️ Judging</a><a href="#p-prov">📜 Contracts</a><a href="#p-env">✉️ Envelopes</a><a href="#p-assets">🪙 Assets &amp; AMM</a><a href="#p-market">🏷️ Market</a><a href="#p-pool">🤫 ConfidentialPool</a><a href="#p-evm">⛓️ EVM pool &amp; farms</a><a href="#p-priv">🕵️ Privacy</a><a href="#p-look">🔎 Lookup</a>
 </nav></div>
 <main>
   <!-- BRIDGE -->
@@ -127,7 +127,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid rgba(
     <p class="src">The bounty judges on four things — Useful, Correct, Clear, Honest about privacy. Each one points at the panel above that proves it, so a contributor can check the claim instead of taking our word for it.</p>
     <div class="grid">
       <div class="stat"><b>Useful</b><span>Would you keep it open? One page, both chains: <a href="#p-bridge">bridge</a>, <a href="#p-env">envelopes</a>, <a href="#p-pool">confidential pool</a>, <a href="#p-evm">EVM pool &amp; farms</a>, <a href="#p-market">secondary market</a> and <a href="#p-look">footprint lookup</a> — re-read live every 30 seconds.</span></div>
-      <div class="stat"><b>Correct</b><span>Do the numbers match the chain? <a href="#p-checks">Cross-checks</a> re-reads every load-bearing figure from a second, independent source or recomputes it from raw values — and the <a href="#p-repro">reproduce panel</a> lists the exact terminal commands to re-derive each one yourself. A mismatch is shown, not hidden.</span></div>
+      <div class="stat"><b>Correct</b><span>Do the numbers match the chain? <a href="#p-checks">Cross-checks</a> re-reads every load-bearing figure from a second, independent source or recomputes it from raw values — the <a href="#p-repro">reproduce panel</a> lists the exact terminal commands to re-derive each one yourself, and the <a href="#p-prov">provenance table</a> gathers every contract this page reads in one place. A mismatch is shown, not hidden.</span></div>
       <div class="stat"><b>Clear</b><span>Does it make two chains easier to understand? The <a href="#p-bridge">bridge panel</a> folds Bitcoin reflection, relay lag and in-flight burns/mints into one view, and every figure carries its source chip.</span></div>
       <div class="stat"><b>Honest about privacy</b><span>What's public and what's hidden: the <a href="#p-priv">privacy panel</a> is measured from the panels above, names the relay-witness caveat, and the <a href="#p-look">lookup</a> applies the same boundary to your own footprint.</span></div>
     </div>
@@ -204,6 +204,24 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid rgba(
         </ul></div>
     </div>
     <p class="note">Relay caveat (from Tacit's own build guide): if you ask Tacit's relay to prove a transaction for you, the relay sees that op's witness — the notes it spends/creates and, for non-blind swaps, its amounts. Proving locally keeps the witness on your device. This page never asks for a key, a seed, or a signature, and it moves no funds — it only reads public endpoints.</p>
+  </section>
+
+  <!-- PROVENANCE -->
+  <section class="wide" id="p-prov">
+    <h2>📜 Provenance — every contract this page reads, in one place <span class="tag priv">SOURCES</span></h2>
+    <p class="src">Each address below is already cited in the panel that reads it — this table only gathers them, so a contributor can check any figure against the contract itself without hunting through the page. All addresses come from Tacit's official <a href="https://github.com/src-company/tacit/blob/main/docs/DEPLOYMENTS.md" target="_blank" rel="noopener">DEPLOYMENTS.md</a>. The Bitcoin-side numbers come from Tacit's public indexer (<a href="https://api.tacit.finance/assets?network=mainnet" target="_blank" rel="noopener">api.tacit.finance</a>, no key) and public Bitcoin explorers; the EVM numbers are <span class="mono">eth_call</span> reads on the contracts below via public RPC.</p>
+    <table><thead><tr><th>Contract</th><th>Chain</th><th>Address</th><th>Read by</th></tr></thead><tbody>
+      <tr><td>ConfidentialPool</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0x000000000Ed1eabD231Be41d93b719056F7febFC" target="_blank" rel="noopener">0x000000000Ed1eabD231Be41d93b719056F7febFC</a></td><td><a href="#p-pool">ConfidentialPool panel</a>, <a href="#p-repro">reproduce</a></td></tr>
+      <tr><td>CollateralEngine</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0x000000003f608BDdF0ca45934003ffb9DbDF70DB" target="_blank" rel="noopener">0x000000003f608BDdF0ca45934003ffb9DbDF70DB</a></td><td><a href="#p-pool">ConfidentialPool panel</a>, <a href="#p-repro">reproduce</a></td></tr>
+      <tr><td>BitcoinLightRelay</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0x20A6ddc2C6E620c6248B5A34E85996516FDd19D0" target="_blank" rel="noopener">0x20A6ddc2C6E620c6248B5A34E85996516FDd19D0</a></td><td><a href="#p-bridge">Bridge panel</a>, <a href="#p-repro">reproduce</a></td></tr>
+      <tr><td>TAC</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0xA1313eb9f3A445606D9583bcAc3ebeB56a858279" target="_blank" rel="noopener">0xA1313eb9f3A445606D9583bcAc3ebeB56a858279</a></td><td><a href="#p-pool">Token table</a>, <a href="#p-repro">reproduce</a></td></tr>
+      <tr><td>tacBTC / cBTC</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0xdf1d99148bEb7a9AFf1d95C49B3d22b7ed90D696" target="_blank" rel="noopener">0xdf1d99148bEb7a9AFf1d95C49B3d22b7ed90D696</a></td><td><a href="#p-pool">Token table</a></td></tr>
+      <tr><td>tacUSD / cUSD</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0x23cACFFAc2674514A6d4F6cD420B4cc2aC921564" target="_blank" rel="noopener">0x23cACFFAc2674514A6d4F6cD420B4cc2aC921564</a></td><td><a href="#p-pool">Token table</a></td></tr>
+      <tr><td>wTAC</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0x2018139a8FDd3666855BE3315C7683b4D6aB7AEf" target="_blank" rel="noopener">0x2018139a8FDd3666855BE3315C7683b4D6aB7AEf</a></td><td><a href="#p-pool">Token table</a></td></tr>
+      <tr><td>TacitEvmPool (pay pool)</td><td>Ethereum · Base · Robinhood Chain</td><td class="mono"><a href="https://etherscan.io/address/0x000000c2A20657CE25f2Ba99737933D031AFBEE9" target="_blank" rel="noopener">0x000000c2A20657CE25f2Ba99737933D031AFBEE9</a></td><td><a href="#p-evm">EVM pool &amp; farms panel</a></td></tr>
+      <tr><td>XNS registry</td><td>Ethereum</td><td class="mono"><a href="https://etherscan.io/address/0x6e797ba2d3103aF167918e71a7E01DE40D45f74b" target="_blank" rel="noopener">0x6e797ba2d3103aF167918e71a7E01DE40D45f74b</a></td><td><a href="#p-look">Lookup</a>, <a href="#p-repro">reproduce</a></td></tr>
+    </tbody></table>
+    <p class="note">If any address here disagreed with DEPLOYMENTS.md, the panels reading it would be wrong — that is why the list is explicit: the check takes one click per row.</p>
   </section>
 
   <!-- LOOKUP -->
